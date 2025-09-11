@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { editImage } from '@/lib/gemini-server';
 import { restoreImageWithReplicate } from '@/lib/replicate-server';
 import { EditImageRequest } from '@/types';
+import { optimizeImage } from '@/lib/image-optimizer';
 
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
@@ -18,12 +19,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Optimize image before processing to reduce token usage
+    const optimized = await optimizeImage(base64ImageData, mimeType, {
+      maxWidth: 1200,
+      maxHeight: 1200,
+      maxSizeKB: 400,
+      quality: 85,
+    });
+    
+    if (optimized.wasOptimized) {
+      console.log(`Image optimized for restoration: ${optimized.originalSize} -> ${optimized.optimizedSize} bytes`);
+    }
+
     let result;
     
     try {
       // First attempt: Use Google Gemini (primary method)
       console.log('Attempting image restoration with Google Gemini...');
-      result = await editImage(base64ImageData, mimeType, prompt);
+      result = await editImage(optimized.base64, optimized.mimeType, prompt);
       console.log('Google Gemini restoration successful');
       
       return NextResponse.json(result);
@@ -44,7 +57,7 @@ export async function POST(request: NextRequest) {
       try {
         // Second attempt: Use Replicate as fallback
         console.log('Attempting image restoration with Replicate Seedream-4 as fallback...');
-        result = await restoreImageWithReplicate(base64ImageData, mimeType, prompt);
+        result = await restoreImageWithReplicate(optimized.base64, optimized.mimeType, prompt);
         console.log('Replicate fallback restoration successful');
         
         return NextResponse.json(result);

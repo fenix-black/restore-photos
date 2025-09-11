@@ -24,6 +24,7 @@
   "labelAfter": "After",
   "stepStarting": "Starting process...",
   "stepAnalyzing": "Analyzing Photo",
+  "stepOptimizing": "Optimizing Image",
   "stepCorrecting": "Correcting Perspective",
   "stepRestoring": "Restoring Image",
   "stepTranslating": "Translating Prompt...",

@@ -24,6 +24,7 @@
   "labelAfter": "Después",
   "stepStarting": "Iniciando proceso...",
   "stepAnalyzing": "Analizando Foto",
+  "stepOptimizing": "Optimizando Imagen",
   "stepCorrecting": "Corrigiendo Perspectiva",
   "stepRestoring": "Restaurando Imagen",
   "stepTranslating": "Traduciendo descripción...",
