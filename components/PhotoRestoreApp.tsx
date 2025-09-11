@@ -10,6 +10,7 @@ import LanguageSwitcher from './LanguageSwitcher';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { AppStep, ImageAnalysis } from '@/types';
 import * as apiClient from '@/services/api-client';
+import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '@/lib/share-utils';
 
 function PhotoRestoreApp() {
   const { t, language } = useLocalization();
@@ -137,6 +138,26 @@ function PhotoRestoreApp() {
     }
   };
 
+  const handleSharePhoto = async () => {
+    const shareOptions = createPhotoShareOptions(
+      t('sharePhotoMessage'),
+      t('shareUrl'),
+      t('shareTitle'),
+      t('shareFailedMessage')
+    );
+    await shareContent(shareOptions);
+  };
+
+  const handleShareVideo = async () => {
+    const shareOptions = createVideoShareOptions(
+      t('shareVideoMessage'),
+      t('shareUrl'),
+      t('shareTitle'),
+      t('shareFailedMessage')
+    );
+    await shareContent(shareOptions);
+  };
+
   return (
     <div className="bg-brand-background min-h-screen text-brand-light font-sans">
       <header className="relative p-4 sm:p-6 flex flex-col justify-center items-center text-center">
@@ -183,6 +204,7 @@ function PhotoRestoreApp() {
                     isLoading={['correcting', 'restoring', 'analyzing'].includes(currentStep)}
                     isDownloadable={!!restoredImage && ['readyForVideo', 'generatingVideo', 'done'].includes(currentStep)}
                     onDownload={handleDownloadRestored}
+                    onShare={handleSharePhoto}
                   />
                 )}
 
@@ -195,6 +217,7 @@ function PhotoRestoreApp() {
                         loadingMessage={loadingMessage}
                         onGenerate={handleGenerateVideo}
                         onDownload={handleDownloadVideo}
+                        onShare={handleShareVideo}
                     />
                 )}
             </div>

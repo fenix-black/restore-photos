@@ -10,9 +10,10 @@
   "alertImageType": "Por favor, suelta un archivo de imagen.",
   "buttonStartOver": "Empezar de Nuevo",
   "buttonRestoreAnother": "Restaurar Otra Foto",
-  "buttonDownloadPhoto": "Descargar Foto",
+  "buttonDownloadPhoto": "Descargar",
   "buttonGenerateVideo": "Generar Video",
   "buttonDownloadVideo": "Descargar Video",
+  "buttonShare": "Compartir",
   "stageTitleRestoration": "Restaurar y Colorear",
   "stageTitleBringToLife": "Dale Vida",
   "videoGenerationPromptLabel": "Genera un video corto y animado basado en el contenido de la foto:",
@@ -33,5 +34,10 @@
   "videoMessages": "[\"Iniciando secuencia de video...\", \"Analizando la descripción de la escena...\", \"Generando fotogramas clave a partir de tu foto...\", \"Componiendo la escena...\", \"Renderizando vectores de movimiento...\", \"Aplicando grano de película digital...\", \"Finalizando el archivo de video, esto puede tardar un momento...\"]",
   "doneTitle": "¡Tu recuerdo animado está completo!",
   "doneSubtitle": "Ahora puedes descargar tu foto restaurada y tu video.",
-  "footerText": "Made by FenixBlack.ai"
+  "footerText": "Made by FenixBlack.ai",
+  "sharePhotoMessage": "🔥 ¡Acabo de restaurar esta foto con IA! Mira esta increíble herramienta de restauración de fotos que devuelve la vida a los recuerdos:",
+  "shareVideoMessage": "🎬 ¡Transformé mi foto en un recuerdo animado! Esta herramienta es increíble - restauró y animó mi fotografía:",
+  "shareUrl": "https://restore.fenixblack.ai",
+  "shareTitle": "Restauración de Fotos con IA - Dale Vida a Tus Recuerdos",
+  "shareFailedMessage": "No se pudo compartir. Puedes copiar este enlace para compartir manualmente:"
 }

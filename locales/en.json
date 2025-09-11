@@ -13,6 +13,7 @@
   "buttonDownloadPhoto": "Download Photo",
   "buttonGenerateVideo": "Generate Video",
   "buttonDownloadVideo": "Download Video",
+  "buttonShare": "Share",
   "stageTitleRestoration": "Restore & Colorize",
   "stageTitleBringToLife": "Bring It to Life",
   "videoGenerationPromptLabel": "Generate a short, animated video based on the photo's content:",
@@ -33,5 +34,10 @@
   "videoMessages": "[\"Initializing video sequence...\", \"Analyzing scene description...\", \"Generating keyframes from your photo...\", \"Compositing the scene...\", \"Rendering motion vectors...\", \"Applying digital film grain...\", \"Finalizing the video file, this may take a moment...\"]",
   "doneTitle": "Your animated memory is complete!",
   "doneSubtitle": "You can now download your restored photo and video.",
-  "footerText": "Made by FenixBlack.ai"
+  "footerText": "Made by FenixBlack.ai",
+  "sharePhotoMessage": "🔥 Just restored this old photo with AI! Check out this amazing photo restoration tool that brings memories back to life:",
+  "shareVideoMessage": "🎬 Turned my old photo into an animated memory with AI! This tool is incredible - it restored AND animated my vintage photo:",
+  "shareUrl": "https://restore.fenixblack.ai",
+  "shareTitle": "AI Photo Restoration - Bring Your Memories to Life",
+  "shareFailedMessage": "Unable to share. You can copy this link to share manually:"
 }
