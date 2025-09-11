@@ -163,3 +163,70 @@ export async function needsOptimization(
     return false;
   }
 }
+
+/**
+ * Optimizes a restored image for download by converting to JPEG and applying compression
+ * @param base64Input - Base64 encoded image string
+ * @param quality - JPEG quality (default: 90 for restored images)
+ * @returns Optimized JPEG image as base64
+ */
+export async function optimizeRestoredImage(
+  base64Input: string,
+  quality: number = 90
+): Promise<{
+  base64: string;
+  mimeType: string;
+  originalSize: number;
+  optimizedSize: number;
+  dimensions: { width: number; height: number };
+}> {
+  try {
+    const inputBuffer = Buffer.from(base64Input, 'base64');
+    const originalSize = inputBuffer.length;
+    
+    // Get image metadata
+    const metadata = await sharp(inputBuffer).metadata();
+    const { width = 0, height = 0 } = metadata;
+    
+    console.log(`Optimizing restored image: ${width}x${height}, ${(originalSize / 1024).toFixed(2)}KB`);
+    
+    // Convert to JPEG with high quality for restored images
+    // We use higher quality (90) for restored images to preserve details
+    const outputBuffer = await sharp(inputBuffer)
+      .jpeg({ 
+        quality, 
+        progressive: true,
+        mozjpeg: true, // Use mozjpeg encoder for better compression
+      })
+      .toBuffer();
+    
+    const optimizedSize = outputBuffer.length;
+    
+    console.log(`Restored image optimized: ${width}x${height}, ${(optimizedSize / 1024).toFixed(2)}KB`);
+    console.log(`Size reduction: ${((1 - optimizedSize / originalSize) * 100).toFixed(1)}%`);
+    
+    return {
+      base64: outputBuffer.toString('base64'),
+      mimeType: 'image/jpeg',
+      originalSize,
+      optimizedSize,
+      dimensions: { width, height },
+    };
+  } catch (error) {
+    console.error('Error optimizing restored image:', error);
+    // Return original if optimization fails
+    const inputBuffer = Buffer.from(base64Input, 'base64');
+    const metadata = await sharp(inputBuffer).metadata();
+    
+    return {
+      base64: base64Input,
+      mimeType: 'image/png', // Assume PNG if we can't optimize
+      originalSize: inputBuffer.length,
+      optimizedSize: inputBuffer.length,
+      dimensions: { 
+        width: metadata.width || 0, 
+        height: metadata.height || 0 
+      },
+    };
+  }
+}

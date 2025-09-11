@@ -48,18 +48,29 @@ function PhotoRestoreApp() {
       setOriginalImage({ file, base64, mimeType });
 
       const analysis = await apiClient.analyzeImage(base64, mimeType, language, t('videoPromptExample'));
+      console.log('Image analysis complete:', {
+        containsChildren: analysis.containsChildren,
+        needsPerspectiveCorrection: analysis.needsPerspectiveCorrection,
+        hasManyPeople: analysis.hasManyPeople,
+        suggestedFilename: analysis.suggestedFilename
+      });
       setImageAnalysis(analysis);
 
       let imageToRestore = { base64, mimeType };
 
       if (analysis.needsPerspectiveCorrection) {
         setCurrentStep('correcting');
-        const corrected = await apiClient.editImage(base64, mimeType, "Correct perspective of this photograph. Crop it to the photo's edges. Do not alter colors or content.");
+        console.log('Image needs perspective correction, applying...');
+        const corrected = await apiClient.editImage(base64, mimeType, "Correct perspective of this photograph. Crop it to the photo's edges. Do not alter colors or content.", analysis.hasManyPeople);
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
       }
 
       setCurrentStep('restoring');
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt);
+      // Use double-pass Gemini for images with many people (7+) for better crowd handling
+      if (analysis.hasManyPeople) {
+        console.log('Image contains many people (7+), using double-pass Gemini for complete crowd restoration');
+      }
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, analysis.hasManyPeople);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -116,13 +127,19 @@ function PhotoRestoreApp() {
   };
   
   const getFileExtension = (mimeType: string) => {
-    return mimeType.split('/')[1] || 'png';
+    // Extract extension from MIME type, default to jpg for restored images
+    const ext = mimeType.split('/')[1];
+    return ext === 'jpeg' ? 'jpg' : (ext || 'jpg');
   }
 
   const handleDownloadRestored = () => {
     if (restoredImage) {
         const ext = getFileExtension(restoredImage.mimeType);
-        downloadImage(restoredImage.base64, restoredImage.mimeType, `${imageAnalysis?.suggestedFilename || 'restored-image'}.${ext}`);
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-restored-${timestamp}.${ext}`
+          : `restored-photo-${timestamp}.${ext}`;
+        downloadImage(restoredImage.base64, restoredImage.mimeType, filename);
     }
   }
 
@@ -131,7 +148,11 @@ function PhotoRestoreApp() {
       const link = document.createElement('a');
       link.href = videoUrl;
       const ext = 'mp4';
-      link.download = `${imageAnalysis?.suggestedFilename || 'video'}.${ext}`;
+      const timestamp = new Date().toISOString().split('T')[0];
+      const filename = imageAnalysis?.suggestedFilename 
+        ? `${imageAnalysis.suggestedFilename}-animated-${timestamp}.${ext}`
+        : `animated-memory-${timestamp}.${ext}`;
+      link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);

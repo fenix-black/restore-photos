@@ -47,7 +47,8 @@ export const analyzeImage = async (
 export const editImage = async (
   base64ImageData: string, 
   mimeType: string, 
-  prompt: string
+  prompt: string,
+  forceReplicate?: boolean
 ): Promise<{ data: string; mimeType: string }> => {
   const response = await fetch('/api/edit-image', {
     method: 'POST',
@@ -58,6 +59,7 @@ export const editImage = async (
       base64ImageData,
       mimeType,
       prompt,
+      forceReplicate,
     }),
   });
 

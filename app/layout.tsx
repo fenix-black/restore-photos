@@ -80,19 +80,16 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/fenix-icon.png" type="image/png" />
-        
         {/* Facebook/Instagram specific meta tags */}
-        <meta property="fb:app_id" content="61577735513391" /> {/* Replace with actual Facebook App ID */}
+        <meta property="fb:app_id" content="61577735513391" />
         <meta property="og:image:secure_url" content="https://restore.fenixblack.ai/og-image.png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:updated_time" content={new Date().toISOString()} />
         <meta property="article:author" content="FenixBlack.ai" />
         <meta property="article:publisher" content="https://www.fenixblack.ai" />
-        
         {/* Instagram specific optimization */}
         <meta name="instagram:card" content="summary_large_image" />
-        
         {/* Additional social optimization */}
         <meta name="theme-color" content="#1a1a2e" />
         <meta name="msapplication-TileColor" content="#1a1a2e" />

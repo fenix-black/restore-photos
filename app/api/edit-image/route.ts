@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { editImage } from '@/lib/gemini-server';
+import { editImage, analyzeImage } from '@/lib/gemini-server';
 import { restoreImageWithReplicate } from '@/lib/replicate-server';
 import { EditImageRequest } from '@/types';
-import { optimizeImage } from '@/lib/image-optimizer';
+import { optimizeImage, optimizeRestoredImage } from '@/lib/image-optimizer';
 
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest = await request.json();
-    const { base64ImageData, mimeType, prompt } = body;
+    const body: EditImageRequest & { forceReplicate?: boolean } = await request.json();
+    const { base64ImageData, mimeType, prompt, forceReplicate } = body;
     
     if (!base64ImageData || !mimeType || !prompt) {
       return NextResponse.json(
@@ -34,12 +34,54 @@ export async function POST(request: NextRequest) {
     let result;
     
     try {
-      // First attempt: Use Google Gemini (primary method)
-      console.log('Attempting image restoration with Google Gemini...');
-      result = await editImage(optimized.base64, optimized.mimeType, prompt);
-      console.log('Google Gemini restoration successful');
+      // If image has many people, use Flux Restore first, then Gemini for refinement
+      if (forceReplicate && process.env.REPLICATE_API_TOKEN) {
+        console.log('Image has many people (7+), using Flux Restore + Gemini hybrid restoration...');
+        
+        let firstPassResult;
+        
+        try {
+          // First pass: Use Flux Restore Image for initial restoration (it doesn't use prompts)
+          console.log('Crowd restoration - Pass 1 of 2 (Flux Restore Image)...');
+          
+          firstPassResult = await restoreImageWithReplicate(optimized.base64, optimized.mimeType, "");
+          console.log('Flux Restore first pass complete - initial restoration done');
+        } catch (replicateError) {
+          console.error('Flux Restore first pass failed, falling back to Gemini-only:', replicateError);
+          // Fallback to Gemini for first pass if Flux Restore fails
+          firstPassResult = await editImage(optimized.base64, optimized.mimeType, prompt);
+        }
+        
+        // Second pass: Use Gemini for intelligent refinement
+        console.log('Crowd restoration - Pass 2 of 2 (Gemini refinement)...');
+        
+        // Create a refinement prompt for Gemini to perfect the Flux Restore output
+        const refinedPrompt = `Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
+        
+        console.log('Gemini refinement prompt:', refinedPrompt);
+        
+        try {
+          result = await editImage(firstPassResult.data, firstPassResult.mimeType, refinedPrompt);
+          console.log('Gemini second pass complete - refinement applied');
+        } catch (error) {
+          console.error('Gemini refinement pass failed, using Flux Restore result:', error);
+          result = firstPassResult; // Fallback to first pass if Gemini fails
+        }
+        
+        console.log('Hybrid Flux Restore + Gemini restoration complete');
+      } else {
+        // Single pass for regular images
+        result = await editImage(optimized.base64, optimized.mimeType, prompt);
+        console.log('Google Gemini restoration successful');
+      }
       
-      return NextResponse.json(result);
+      // Optimize the restored image for download (convert to JPEG with compression)
+      const optimizedResult = await optimizeRestoredImage(result.data);
+      
+      return NextResponse.json({
+        data: optimizedResult.base64,
+        mimeType: optimizedResult.mimeType,
+      });
     } catch (geminiError) {
       console.error('Google Gemini image restoration failed:', geminiError);
       
@@ -56,11 +98,17 @@ export async function POST(request: NextRequest) {
       
       try {
         // Second attempt: Use Replicate as fallback
-        console.log('Attempting image restoration with Replicate Seedream-4 as fallback...');
+        console.log('Attempting image restoration with Replicate Flux Restore as fallback...');
         result = await restoreImageWithReplicate(optimized.base64, optimized.mimeType, prompt);
-        console.log('Replicate fallback restoration successful');
+        console.log('Replicate Flux Restore fallback restoration successful');
         
-        return NextResponse.json(result);
+        // Optimize the restored image for download (convert to JPEG with compression)
+        const optimizedResult = await optimizeRestoredImage(result.data);
+        
+        return NextResponse.json({
+          data: optimizedResult.base64,
+          mimeType: optimizedResult.mimeType,
+        });
       } catch (replicateError) {
         console.error('Replicate fallback also failed:', replicateError);
         

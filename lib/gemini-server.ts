@@ -37,7 +37,7 @@ export const analyzeImage = async (
             mimeType,
           },
         },
-        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if it needs perspective correction. Third, create a powerful prompt to restore and colorize the image. Fourth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Fifth, generate a suggested filename in ${currentLanguage}.` },
+        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if it needs perspective correction. Third, create a SHORT, CONCISE restoration prompt (under 50 words) focusing on: vibrant colors, sharp details, good contrast, realistic skin tones. Fourth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Fifth, generate a suggested filename in ${currentLanguage}.` },
       ],
     },
     config: {
@@ -52,6 +52,10 @@ export const analyzeImage = async (
           needsPerspectiveCorrection: {
             type: Type.BOOLEAN,
             description: "True if the image is a photo of a physical photograph, possibly on a table or held, and requires perspective correction and cropping."
+          },
+          hasManyPeople: {
+            type: Type.BOOLEAN,
+            description: "True if the image contains 7 or more people. Count all visible faces in the image."
           },
           videoPrompt: {
             type: Type.STRING,
@@ -69,7 +73,7 @@ Example prompt: '${examplePrompt}'`
           },
           restorationPrompt: {
             type: Type.STRING,
-            description: "A powerful, detailed prompt for an image editing AI. The goal is to restore and colorize the photo to look like a modern, high-quality photograph. It should command the AI to fix all damage, introduce vivid, natural colors, correct lighting, and render textures with high fidelity."
+            description: "Create a concise, technical prompt to restore and colorize this photo. Focus on: vibrant natural colors, sharp details, good contrast, warm skin tones, realistic textures. Keep it under 50 words. Example: 'Restore and colorize with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Fix damage. Modern photo quality.'"
           },
           suggestedFilename: {
             type: Type.STRING,
@@ -97,6 +101,9 @@ export const editImage = async (
   mimeType: string, 
   prompt: string
 ): Promise<{ data: string; mimeType: string; }> => {
+  console.log("Starting image restoration with Google Gemini...");
+  console.log("Restoration prompt:", prompt);
+  
   const ai = getGeminiAI();
   const response: GenerateContentResponse = await ai.models.generateContent({
     model: editModel,

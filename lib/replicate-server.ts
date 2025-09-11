@@ -106,52 +106,91 @@ export const restoreImageWithReplicate = async (
     // Convert base64 image to data URI for Replicate
     const dataUri = `data:${mimeType};base64,${base64ImageData}`;
 
-    // Configure Seedream-4 model input
-    // The model works best with specific size and aspect ratio settings
+    // Configure Flux Restore Image model input (specialized for restoration)
     const input = {
-      size: "2K",
-      width: 2048,
-      height: 2048,
-      prompt: prompt,
-      max_images: 1,
-      image_input: [dataUri], // Seedream-4 accepts image input for restoration/enhancement
-      aspect_ratio: "match_input_image", // Will be overridden by actual image dimensions
-      sequential_image_generation: "disabled"
+      input_image: dataUri,
+      output_format: "png",
+      safety_tolerance: 2
     };
 
-    console.log("Starting image restoration with Replicate Seedream-4...");
+    console.log("Starting image restoration with Replicate Flux Restore Image...");
     
     // Run the model
     const output = await replicate.run(
-      "bytedance/seedream-4", 
+      "flux-kontext-apps/restore-image", 
       { input }
-    ) as Array<{ url: string }> | { url: string };
+    ) as any;
 
-    // Handle the output - Seedream-4 returns an array of image objects
-    const imageUrl = Array.isArray(output) 
-      ? output[0]?.url 
-      : (output as any)?.url || output;
+    // Handle the output - Flux Restore Image returns an object with url() method
+    console.log("Replicate output received:", typeof output);
     
-    if (!imageUrl) {
-      throw new Error("No image URL returned from Replicate Seedream-4");
+    if (!output) {
+      console.error("Invalid output from Replicate:", output);
+      throw new Error("No output returned from Replicate Flux Restore Image");
     }
-
-    console.log("Image restored successfully, downloading...");
-
-    // Download the image from the URL
-    const response = await fetch(imageUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to download restored image from Replicate: ${response.statusText}`);
+    
+    // Get the image output (Flux Restore typically returns a single object)
+    const imageOutput = Array.isArray(output) ? output[0] : output;
+    let base64: string;
+    let contentType = mimeType;
+    
+    // Check if it's a ReadableStream
+    if (imageOutput && imageOutput instanceof ReadableStream) {
+      console.log("Output is a ReadableStream, reading directly...");
+      const reader = imageOutput.getReader();
+      const chunks: Uint8Array[] = [];
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+      }
+      
+      const buffer = Buffer.concat(chunks.map(chunk => Buffer.from(chunk)));
+      base64 = buffer.toString('base64');
+      contentType = 'image/png'; // Seedream-4 typically outputs PNG
     }
-
-    // Convert to base64 for consistency with current implementation
-    const arrayBuffer = await response.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
+    // Check if it has a url method
+    else if (imageOutput && typeof imageOutput.url === 'function') {
+      const imageUrl = await imageOutput.url();
+      console.log("Image restored successfully, downloading from:", imageUrl);
+      
+      // Download the image from the URL
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to download restored image from Replicate: ${response.statusText}`);
+      }
+      
+      // Convert to base64
+      const arrayBuffer = await response.arrayBuffer();
+      base64 = Buffer.from(arrayBuffer).toString('base64');
+      contentType = 'image/png'; // Seedream-4 typically outputs PNG as configured
+    }
+    // If it's already a string URL
+    else if (typeof imageOutput === 'string') {
+      console.log("Image restored successfully, downloading from:", imageOutput);
+      
+      const response = await fetch(imageOutput);
+      if (!response.ok) {
+        throw new Error(`Failed to download restored image from Replicate: ${response.statusText}`);
+      }
+      
+      const arrayBuffer = await response.arrayBuffer();
+      base64 = Buffer.from(arrayBuffer).toString('base64');
+      contentType = 'image/png'; // Seedream-4 typically outputs PNG
+    }
+    // If it's a Buffer or Uint8Array
+    else if (Buffer.isBuffer(imageOutput) || imageOutput instanceof Uint8Array) {
+      console.log("Output is a buffer, converting directly...");
+      base64 = Buffer.from(imageOutput).toString('base64');
+      contentType = 'image/png'; // Seedream-4 typically outputs PNG
+    }
+    else {
+      console.error("Unexpected output format from Replicate:", imageOutput);
+      throw new Error("Unable to process Replicate output");
+    }
     
-    // Determine the mime type from the response or default to the input type
-    const contentType = response.headers.get('content-type') || mimeType;
-    
-    console.log("Image downloaded and converted to base64");
+    console.log("Image processed and converted to base64");
     
     return { 
       data: base64, 

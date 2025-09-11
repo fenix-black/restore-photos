@@ -11,6 +11,7 @@ export type AppStep =
 export interface ImageAnalysis {
   containsChildren: boolean;
   needsPerspectiveCorrection: boolean;
+  hasManyPeople: boolean; // True if image has 7+ people
   videoPrompt: string;
   restorationPrompt: string;
   suggestedFilename: string;
