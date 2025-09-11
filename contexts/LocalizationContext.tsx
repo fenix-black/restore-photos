@@ -20,13 +20,38 @@ const translations: Record<Language, Translations> = {
   es: esTranslations,
 };
 
+const detectBrowserLanguage = (): Language => {
+  if (typeof window === 'undefined') return 'en'; // SSR fallback
+  
+  // Get browser languages in order of preference
+  const browserLanguages = navigator.languages || [navigator.language];
+  
+  for (const lang of browserLanguages) {
+    // Extract language code (e.g., 'en-US' -> 'en', 'es-MX' -> 'es')
+    const langCode = lang.toLowerCase().split('-')[0] as Language;
+    
+    // Check if we support this language
+    if (translations[langCode]) {
+      return langCode;
+    }
+  }
+  
+  // Fallback to English
+  return 'en';
+};
+
 export const LocalizationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [language, setLanguage] = useState<Language>('en');
 
   useEffect(() => {
+    // Check for saved user preference first (explicit choice takes priority)
     const savedLanguage = localStorage.getItem('preferredLanguage') as Language;
     if (savedLanguage && translations[savedLanguage]) {
       setLanguage(savedLanguage);
+    } else {
+      // No saved preference, use browser language detection as default
+      const detectedLanguage = detectBrowserLanguage();
+      setLanguage(detectedLanguage);
     }
   }, []);
 
