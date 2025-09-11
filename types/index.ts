@@ -1,0 +1,45 @@
+export type AppStep = 
+  | 'idle' 
+  | 'analyzing' 
+  | 'correcting' 
+  | 'restoring' 
+  | 'translating'
+  | 'readyForVideo' 
+  | 'generatingVideo' 
+  | 'done';
+
+export interface ImageAnalysis {
+  containsChildren: boolean;
+  needsPerspectiveCorrection: boolean;
+  videoPrompt: string;
+  restorationPrompt: string;
+  suggestedFilename: string;
+}
+
+export interface ImageData {
+  base64: string;
+  mimeType: string;
+}
+
+export interface AnalyzeImageRequest {
+  base64ImageData: string;
+  mimeType: string;
+  language: 'en' | 'es';
+}
+
+export interface EditImageRequest {
+  base64ImageData: string;
+  mimeType: string;
+  prompt: string;
+}
+
+export interface GenerateVideoRequest {
+  prompt: string;
+  imageData: ImageData;
+  language: 'en' | 'es';
+}
+
+export interface TranslateTextRequest {
+  text: string;
+  targetLanguage: 'es';
+}
