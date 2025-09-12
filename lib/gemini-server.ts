@@ -57,6 +57,14 @@ export const analyzeImage = async (
             type: Type.BOOLEAN,
             description: "True if the image contains 7 or more people. Count all visible faces in the image."
           },
+          isBlackAndWhite: {
+            type: Type.BOOLEAN,
+            description: "True if the photograph is black and white or has very minimal/faded colors (sepia, monochrome, etc)."
+          },
+          isVeryOld: {
+            type: Type.BOOLEAN,
+            description: "True if the photograph appears to be very old (pre-1960s) based on visible aging, damage, fading, or photographic style."
+          },
           videoPrompt: {
             type: Type.STRING,
             description: `Generate a detailed, cinematic prompt IN ENGLISH for the Veo video generation model. The prompt should describe a short, subtle animation. Follow these guidelines:

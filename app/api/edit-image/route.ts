@@ -9,8 +9,8 @@ const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; /
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest & { forceReplicate?: boolean } = await request.json();
-    const { base64ImageData, mimeType, prompt, forceReplicate } = body;
+    const body: EditImageRequest & { useDoublePass?: boolean } = await request.json();
+    const { base64ImageData, mimeType, prompt, useDoublePass } = body;
     
     if (!base64ImageData || !mimeType || !prompt) {
       return NextResponse.json(
@@ -34,9 +34,9 @@ export async function POST(request: NextRequest) {
     let result;
     
     try {
-      // If image has many people, use Flux Restore first, then Gemini for refinement
-      if (forceReplicate && process.env.REPLICATE_API_TOKEN) {
-        console.log('Image has many people (7+), using Flux Restore + Gemini hybrid restoration...');
+      // Use double-pass for: many people, B&W photos, or very old photos
+      if (useDoublePass && process.env.REPLICATE_API_TOKEN) {
+        console.log('Using Flux Restore + Gemini double-pass restoration (crowd/B&W/old photo detected)...');
         
         let firstPassResult;
         

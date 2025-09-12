@@ -23,6 +23,7 @@ function PhotoRestoreApp() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [displayVideoPrompt, setDisplayVideoPrompt] = useState<string>('');
+  const [enhancedRestoration, setEnhancedRestoration] = useState<boolean>(true); // Default to enabled
 
   const resetState = () => {
     setCurrentStep('idle');
@@ -52,25 +53,42 @@ function PhotoRestoreApp() {
         containsChildren: analysis.containsChildren,
         needsPerspectiveCorrection: analysis.needsPerspectiveCorrection,
         hasManyPeople: analysis.hasManyPeople,
+        isBlackAndWhite: analysis.isBlackAndWhite,
+        isVeryOld: analysis.isVeryOld,
         suggestedFilename: analysis.suggestedFilename
       });
       setImageAnalysis(analysis);
 
       let imageToRestore = { base64, mimeType };
 
+      // Determine if we should use double-pass restoration (only if user enabled it)
+      const shouldUseDoublePass = enhancedRestoration && (analysis.hasManyPeople || analysis.isBlackAndWhite || analysis.isVeryOld);
+      
       if (analysis.needsPerspectiveCorrection) {
         setCurrentStep('correcting');
         console.log('Image needs perspective correction, applying...');
-        const corrected = await apiClient.editImage(base64, mimeType, "Correct perspective of this photograph. Crop it to the photo's edges. Do not alter colors or content.", analysis.hasManyPeople);
+        const corrected = await apiClient.editImage(base64, mimeType, "Correct perspective of this photograph. Crop it to the photo's edges. Do not alter colors or content.", false);
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
       }
 
       setCurrentStep('restoring');
-      // Use double-pass Gemini for images with many people (7+) for better crowd handling
-      if (analysis.hasManyPeople) {
-        console.log('Image contains many people (7+), using double-pass Gemini for complete crowd restoration');
+      
+      // Log restoration approach
+      if (enhancedRestoration) {
+        if (shouldUseDoublePass) {
+          const reasons = [];
+          if (analysis.hasManyPeople) reasons.push('many people (7+)');
+          if (analysis.isBlackAndWhite) reasons.push('black & white');
+          if (analysis.isVeryOld) reasons.push('very old photo');
+          console.log(`Enhanced restoration enabled - Using double-pass due to: ${reasons.join(', ')}`);
+        } else {
+          console.log('Enhanced restoration enabled - Using single pass (modern/simple photo)');
+        }
+      } else {
+        console.log('Enhanced restoration disabled - Using single pass only');
       }
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, analysis.hasManyPeople);
+      
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -195,7 +213,43 @@ function PhotoRestoreApp() {
 
       <main className="container mx-auto px-4 pb-12 pt-4 flex flex-col items-center gap-8">
         {currentStep === 'idle' && (
+          <>
+            {/* Enhanced Restoration Toggle - Always visible when idle */}
+            <div className="flex items-center gap-3">
+              <label className="flex items-center cursor-pointer group">
+                <input
+                  type="checkbox"
+                  checked={enhancedRestoration}
+                  onChange={(e) => setEnhancedRestoration(e.target.checked)}
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-2"
+                />
+                <span className="ml-2 text-gray-300 group-hover:text-white transition-colors">
+                  {t('enhancedRestoration')}
+                </span>
+              </label>
+              <div className="relative group">
+                <svg 
+                  className="w-4 h-4 text-gray-500 hover:text-gray-300 cursor-help" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" 
+                  />
+                </svg>
+                <div className="absolute left-0 bottom-full mb-2 hidden group-hover:block w-64 p-2 bg-gray-800 text-white text-sm rounded-lg shadow-lg z-10">
+                  {t('enhancedRestorationTooltip')}
+                </div>
+              </div>
+            </div>
+            
+            {/* Dropzone for image upload */}
             <Dropzone onImageDrop={handleImageDrop} />
+          </>
         )}
         
         {error && (

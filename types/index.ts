@@ -12,6 +12,8 @@ export interface ImageAnalysis {
   containsChildren: boolean;
   needsPerspectiveCorrection: boolean;
   hasManyPeople: boolean; // True if image has 7+ people
+  isBlackAndWhite: boolean; // True if B&W or minimal colors
+  isVeryOld: boolean; // True if pre-1960s or very aged
   videoPrompt: string;
   restorationPrompt: string;
   suggestedFilename: string;

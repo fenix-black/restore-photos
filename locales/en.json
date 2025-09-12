@@ -40,5 +40,7 @@
   "shareVideoMessage": "🎬 Turned my old photo into an animated memory with AI! This tool is incredible - it restored AND animated my vintage photo:",
   "shareUrl": "https://restore.fenixblack.ai",
   "shareTitle": "AI Photo Restoration - Bring Your Memories to Life",
-  "shareFailedMessage": "Unable to share. You can copy this link to share manually:"
+  "shareFailedMessage": "Unable to share. You can copy this link to share manually:",
+  "enhancedRestoration": "Enhanced Restoration",
+  "enhancedRestorationTooltip": "Use advanced two-pass restoration for better colors (may slightly alter faces)"
 }

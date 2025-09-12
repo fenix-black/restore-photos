@@ -40,5 +40,7 @@
   "shareVideoMessage": "🎬 ¡Transformé mi foto en un recuerdo animado! Esta herramienta es increíble - restauró y animó mi fotografía:",
   "shareUrl": "https://restore.fenixblack.ai",
   "shareTitle": "Restauración de Fotos con IA - Dale Vida a Tus Recuerdos",
-  "shareFailedMessage": "No se pudo compartir. Puedes copiar este enlace para compartir manualmente:"
+  "shareFailedMessage": "No se pudo compartir. Puedes copiar este enlace para compartir manualmente:",
+  "enhancedRestoration": "Restauración Mejorada",
+  "enhancedRestorationTooltip": "Usa restauración avanzada de dos pasos para mejores colores (puede alterar ligeramente los rostros)"
 }
