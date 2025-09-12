@@ -37,7 +37,7 @@ export const analyzeImage = async (
             mimeType,
           },
         },
-        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if it needs perspective correction. Third, create a SHORT, CONCISE restoration prompt (under 50 words) focusing on: vibrant colors, sharp details, good contrast, realistic skin tones. Fourth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Fifth, generate a suggested filename in ${currentLanguage}.` },
+        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if this is a 'photo of a photo' (physical photograph captured within another scene like on a table, wall, or in hands) that needs extraction and perspective correction. Third, create a SHORT, CONCISE restoration prompt (under 50 words) focusing PRIMARILY on: preserving and respecting facial features and structures exactly, then enhancing with vibrant colors, sharp details, good contrast. IMPORTANT: Do NOT include perspective or geometry corrections in the restoration prompt as they are handled separately. Fourth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Fifth, generate a suggested filename in ${currentLanguage}.` },
       ],
     },
     config: {
@@ -51,7 +51,7 @@ export const analyzeImage = async (
           },
           needsPerspectiveCorrection: {
             type: Type.BOOLEAN,
-            description: "True if the image is a photo of a physical photograph, possibly on a table or held, and requires perspective correction and cropping."
+            description: "True if the image shows a physical photograph within another scene (e.g., photo on a table, held in hands, on a wall, in a frame) that needs to be extracted and isolated. This means the image is a 'photo of a photo' where we need to remove the surrounding environment and extract just the photograph itself."
           },
           hasManyPeople: {
             type: Type.BOOLEAN,
@@ -81,7 +81,7 @@ Example prompt: '${examplePrompt}'`
           },
           restorationPrompt: {
             type: Type.STRING,
-            description: "Create a concise, technical prompt to restore and colorize this photo. Focus on: vibrant natural colors, sharp details, good contrast, warm skin tones, realistic textures. Keep it under 50 words. Example: 'Restore and colorize with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Fix damage. Modern photo quality.'"
+            description: "Create a concise, technical prompt to restore and colorize this photo. PRIORITY: Preserve all facial features, structures, and identities exactly as they appear - do not alter faces. Focus ONLY on color restoration and enhancement: vibrant natural colors, sharp details, good contrast, realistic skin tones. Do NOT include perspective or geometry corrections (handled separately if needed). Keep it under 50 words. Example: 'Preserve all facial features and structures exactly. Restore with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Fix damage without altering faces or geometry. Modern photo quality.'"
           },
           suggestedFilename: {
             type: Type.STRING,

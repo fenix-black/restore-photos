@@ -66,14 +66,24 @@ function PhotoRestoreApp() {
       
       if (analysis.needsPerspectiveCorrection) {
         setCurrentStep('correcting');
-        console.log('Image needs perspective correction, applying...');
-        const corrected = await apiClient.editImage(base64, mimeType, "Correct perspective of this photograph. Crop it to the photo's edges. Do not alter colors or content.", false);
+        console.log('Photo-within-photo detected. Extracting and correcting perspective...');
+        const corrected = await apiClient.editImage(
+          base64, 
+          mimeType, 
+          "CRITICAL: Preserve ALL facial features, structures, and identities exactly - do not alter or distort any faces. Extract and isolate ONLY the photograph itself from the image, removing any background like tables, walls, hands, or frames. Correct the perspective to make it straight and aligned. Crop precisely to the photograph's actual edges, excluding any surrounding environment. Maintain all original photo content, colors, and especially facial integrity. Apply minimal transformation to avoid distortion.", 
+          false
+        );
+        console.log('Photo extraction and perspective correction completed');
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
       }
 
       setCurrentStep('restoring');
       
       // Log restoration approach
+      if (analysis.needsPerspectiveCorrection) {
+        console.log('Starting restoration on extracted photograph...');
+      }
+      
       if (enhancedRestoration) {
         if (shouldUseDoublePass) {
           const reasons = [];
