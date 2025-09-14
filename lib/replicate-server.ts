@@ -231,19 +231,27 @@ export const generateVideoUrlWithReplicate = async (
     // Convert base64 image to data URI for Replicate
     const dataUri = `data:${imageData.mimeType};base64,${imageData.data}`;
 
-    // Configure the Kling v2.1 model input
-    const input = {
+    // Configure the Kling v2.1 model input: kwaivgi/kling-v2.1
+    /*const input = {
       mode: "standard",
       prompt: prompt,
       duration: 5,
       start_image: dataUri,
       negative_prompt: "blurry, distorted, unrealistic movement, artifacts, glitches"
+    };*/
+    // Configure the Kling v2.1 model input
+    const input = {
+      prompt: prompt,
+      duration: 6,
+      first_frame_image: dataUri,
+      resolution: "512p",
+      prompt_optimizer: false
     };
 
     console.log("Starting video generation with Replicate (URL mode)...");
     
     // Run the model
-    const output = await replicate.run("kwaivgi/kling-v2.1", { 
+    const output = await replicate.run("minimax/hailuo-02", { 
       input 
     }) as string | string[];
 

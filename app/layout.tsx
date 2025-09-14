@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { LocalizationProvider } from '@/contexts/LocalizationContext';
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -131,6 +132,7 @@ export default function RootLayout({
         <LocalizationProvider>
           {children}
         </LocalizationProvider>
+        <Analytics />
       </body>
     </html>
   );
