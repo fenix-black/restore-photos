@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { translateText } from '@/lib/gemini-server';
+import { translateText as translateTextWithGemini } from '@/lib/gemini-server';
+import { translateText as translateTextWithGroq, withGroqFallback } from '@/lib/groq-server';
 import { TranslateTextRequest } from '@/types';
 
 export async function POST(request: NextRequest) {
@@ -14,7 +15,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const translatedText = await translateText(text, targetLanguage);
+    // Try Groq first, fall back to Gemini if it fails
+    const translatedText = await withGroqFallback(
+      () => translateTextWithGroq(text, targetLanguage),
+      () => translateTextWithGemini(text, targetLanguage),
+      'translation'
+    );
     
     return NextResponse.json({ translatedText });
   } catch (error) {

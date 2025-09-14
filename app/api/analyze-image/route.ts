@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { analyzeImage } from '@/lib/gemini-server';
-import { AnalyzeImageRequest } from '@/types';
+import { generatePromptsWithGroq } from '@/lib/groq-server';
+import { AnalyzeImageRequest, ImageAnalysis } from '@/types';
 import { optimizeImage } from '@/lib/image-optimizer';
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,28 @@ export async function POST(request: NextRequest) {
       console.log(`Image optimized for analysis: ${optimized.originalSize} -> ${optimized.optimizedSize} bytes`);
     }
 
+    // Use Gemini for image analysis (visual analysis only)
+    console.log('Analyzing image with Gemini...');
     const analysis = await analyzeImage(optimized.base64, optimized.mimeType, language, examplePrompt);
+    
+    // Optionally enhance the text prompts with Groq for better quality
+    if (process.env.USE_GROQ_FOR_PROMPTS === 'true') {
+      try {
+        console.log('Enhancing text prompts with Groq...');
+        const groqPrompts = await generatePromptsWithGroq(analysis, language, examplePrompt);
+        
+        // Replace the text prompts with Groq-generated ones, keep Gemini's visual analysis
+        const enhancedAnalysis: ImageAnalysis = {
+          ...analysis,
+          ...groqPrompts
+        };
+        
+        return NextResponse.json(enhancedAnalysis);
+      } catch (groqError) {
+        console.error('Groq prompt enhancement failed, using original Gemini prompts:', groqError);
+        // Fall back to original Gemini analysis
+      }
+    }
     
     return NextResponse.json(analysis);
   } catch (error) {
