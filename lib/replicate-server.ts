@@ -218,6 +218,97 @@ export const restoreImageWithReplicate = async (
 };
 
 /**
+ * Start async video generation and return prediction ID immediately
+ * This avoids timeout issues with long-running video generation
+ */
+export const startVideoGeneration = async (
+  prompt: string,
+  imageData: { data: string; mimeType: string; }
+): Promise<string> => {
+  const replicate = getReplicateClient();
+
+  try {
+    // Convert base64 image to data URI for Replicate
+    const dataUri = `data:${imageData.mimeType};base64,${imageData.data}`;
+
+    // Configure the model input (same as generateVideoUrlWithReplicate)
+    const input = {
+      fps: 24,
+      image: dataUri,
+      prompt: prompt,
+      duration: 5,
+      resolution: "480p",
+      camera_fixed: true,
+      aspect_ratio: "16:9"
+    };
+
+    console.log("Starting async video generation with Replicate...");
+    
+    // Create prediction instead of running directly
+    const prediction = await replicate.predictions.create({
+      model: "bytedance/seedance-1-pro",
+      input
+    });
+
+    console.log("Video generation started with prediction ID:", prediction.id);
+    
+    return prediction.id;
+  } catch (error) {
+    console.error('Replicate video generation start error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message.includes('REPLICATE_API_TOKEN')) {
+        throw new Error('Replicate API token is not configured. Please set REPLICATE_API_TOKEN in your environment variables.');
+      }
+      throw error;
+    }
+    
+    throw new Error('Failed to start video generation');
+  }
+};
+
+/**
+ * Check the status of a video generation prediction
+ * Returns status and output URL when ready
+ */
+export const checkVideoGenerationStatus = async (
+  predictionId: string
+): Promise<{ status: string; output?: string }> => {
+  const replicate = getReplicateClient();
+
+  try {
+    const prediction = await replicate.predictions.get(predictionId);
+    
+    console.log(`Prediction ${predictionId} status: ${prediction.status}`);
+    
+    // Return status and output if available
+    if (prediction.status === 'succeeded' && prediction.output) {
+      // Handle different output formats
+      const videoUrl = Array.isArray(prediction.output) 
+        ? prediction.output[0] 
+        : prediction.output;
+      
+      return {
+        status: prediction.status,
+        output: videoUrl
+      };
+    }
+    
+    return {
+      status: prediction.status
+    };
+  } catch (error) {
+    console.error('Check video status error:', error);
+    
+    if (error instanceof Error) {
+      throw error;
+    }
+    
+    throw new Error('Failed to check video generation status');
+  }
+};
+
+/**
  * Alternative method that returns the video URL directly instead of base64
  * This is more efficient for Vercel deployments as it avoids large payloads
  */
