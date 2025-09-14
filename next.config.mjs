@@ -5,6 +5,16 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '50mb',
     },
+    // Handle sharp as an external package for proper Vercel deployment
+    serverComponentsExternalPackages: ['sharp'],
+  },
+  // Ensure sharp works correctly on Vercel
+  webpack: (config, { isServer }) => {
+    if (isServer) {
+      // Externalize sharp to prevent bundling issues
+      config.externals = [...(config.externals || []), 'sharp'];
+    }
+    return config;
   },
 }
 

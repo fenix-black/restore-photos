@@ -1,0 +1,16 @@
+{
+  "functions": {
+    "app/api/analyze-image/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/edit-image/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/generate-video/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "env": {
+    "SHARP_IGNORE_GLOBAL_LIBVIPS": "1"
+  }
+}

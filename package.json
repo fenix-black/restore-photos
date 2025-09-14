@@ -4,8 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
-    "start": "next start"
+    "build": "next build",
+    "start": "next start",
+    "postinstall": "npm ls sharp || npm rebuild sharp"
   },
   "dependencies": {
     "@google/genai": "^1.19.0",
@@ -26,5 +27,8 @@
     "autoprefixer": "^10.4.21",
     "tailwindcss": "^4.1.13",
     "typescript": "^5"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.34.3"
   }
 }
