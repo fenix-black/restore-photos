@@ -42,5 +42,11 @@
   "shareTitle": "Restauración de Fotos con IA - Dale Vida a Tus Recuerdos",
   "shareFailedMessage": "No se pudo compartir. Puedes copiar este enlace para compartir manualmente:",
   "enhancedRestoration": "Restauración Mejorada",
-  "enhancedRestorationTooltip": "Usa restauración avanzada de dos pasos para mejores colores (puede alterar ligeramente los rostros)"
+  "enhancedRestorationTooltip": "Usa restauración avanzada de dos pasos para mejores colores (puede alterar ligeramente los rostros)",
+  "remaining": "restante",
+  "almostDone": "Casi listo...",
+  "estimatedTime": "Tiempo estimado",
+  "finalizingVideo": "Finalizando tu video...",
+  "directorNotes": "Notas del Director",
+  "creatingMagic": "✨ Creando algo mágico con tus recuerdos..."
 }

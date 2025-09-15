@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
         console.log('Crowd restoration - Pass 2 of 2 (Gemini refinement)...');
         
         // Create a refinement prompt for Gemini to perfect the Flux Restore output
-        const refinedPrompt = `CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
+        const refinedPrompt = prompt; //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
         
         console.log('Gemini refinement prompt:', refinedPrompt);
         

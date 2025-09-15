@@ -42,5 +42,11 @@
   "shareTitle": "AI Photo Restoration - Bring Your Memories to Life",
   "shareFailedMessage": "Unable to share. You can copy this link to share manually:",
   "enhancedRestoration": "Enhanced Restoration",
-  "enhancedRestorationTooltip": "Use advanced two-pass restoration for better colors (may slightly alter faces)"
+  "enhancedRestorationTooltip": "Use advanced two-pass restoration for better colors (may slightly alter faces)",
+  "remaining": "remaining",
+  "almostDone": "Almost done...",
+  "estimatedTime": "Estimated time",
+  "finalizingVideo": "Finalizing your video...",
+  "directorNotes": "Director's Notes",
+  "creatingMagic": "✨ Creating something magical from your memories..."
 }

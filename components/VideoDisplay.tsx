@@ -6,6 +6,7 @@ import Spinner from './Spinner';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { ShareIcon } from './icons/ShareIcon';
 import { useLocalization } from '@/contexts/LocalizationContext';
+import EnhancedVideoProgress from './EnhancedVideoProgress';
 
 interface VideoDisplayProps {
   description: string;
@@ -38,11 +39,10 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ description, videoUrl, isLo
       )}
 
       {isLoading && (
-        <div className="flex flex-col items-center justify-center min-h-[150px]">
-          <Spinner />
-          <p className="mt-4 text-brand-light animate-pulse">{loadingMessage}</p>
-          <p className="mt-2 text-sm text-gray-400">{t('videoGenerationPatience')}</p>
-        </div>
+        <EnhancedVideoProgress 
+          videoPrompt={description}
+          isGenerating={isLoading}
+        />
       )}
 
       {videoUrl && (

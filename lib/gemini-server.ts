@@ -41,6 +41,7 @@ export const analyzeImage = async (
       ],
     },
     config: {
+      temperature: 0.9,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -81,7 +82,7 @@ Example prompt: '${examplePrompt}'`
           },
           restorationPrompt: {
             type: Type.STRING,
-            description: "Create a concise, technical prompt to restore and colorize this photo. PRIORITY: Preserve all facial features, structures, and identities exactly as they appear - do not alter faces. Focus ONLY on color restoration and enhancement: vibrant natural colors, sharp details, good contrast, realistic skin tones. Do NOT include perspective or geometry corrections (handled separately if needed). Keep it under 50 words. Example: 'Preserve all facial features and structures exactly. Restore with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Fix damage without altering faces or geometry. Modern photo quality.'"
+            description: "Create a concise, technical prompt to restore and colorize this photo. PRIORITY: Describe specific things to change while describing how to preserve all facial features intact, pay special attention to the eyes, shapes, structures, and identities exactly as they appear - do not alter faces nor geometry. Focus ONLY on color restoration and enhancement: vibrant natural colors, sharp details, good contrast, realistic skin tones. Keep it under 100 words. Example: 'Preserve everything as it is, all facial features intact (faces, head shape, eyes positions, etc), and structures exactly as they appear. Restore with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Modern photo quality like a IMG_223099.TIFF picture.'"
           },
           suggestedFilename: {
             type: Type.STRING,

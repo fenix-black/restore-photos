@@ -11,7 +11,7 @@ export function getGroqClient() {
 }
 
 // Using llama-3.3-70b-versatile as it's one of the best available models on Groq
-const textModel = 'openai/gpt-oss-20b';
+const textModel = 'openai/gpt-oss-120b';
 
 export const translateText = async (text: string, targetLanguage: 'es'): Promise<string> => {
   const groq = getGroqClient();
@@ -80,7 +80,7 @@ Return your response as valid JSON with keys: restorationPrompt, videoPrompt, su
 - Is very old (pre-1960s): ${imageAnalysisFromGemini.isVeryOld || false}
 
 Generate:
-1. Restoration prompt: Focus on preserving all facial features exactly, then enhance with vibrant colors, sharp details, good contrast. DO NOT include perspective corrections.
+1. Restoration prompt: Focus on preserving all facial features exactly, keep them exactly as they are, same eyes, same shapes, same eyes, same geometry, then enhance with vibrant colors, sharp details, good contrast. DO NOT include perspective corrections.
 
 2. Video prompt (in English): Create a detailed, cinematic prompt for subtle animation. Guidelines:
 - Keep characters, clothing, background consistent with original
@@ -141,3 +141,92 @@ export const withGroqFallback = async <T>(
     }
   }
 };
+
+export async function generateDirectorCommentary(videoPrompt: string, language: string = 'en'): Promise<string[]> {
+  const groq = getGroqClient();
+
+  const prompt = `Based on this scene: "${videoPrompt}"
+
+Generate exactly 6 director's comments (${language === 'es' ? 'in Spanish' : 'in English'}).
+Each comment should be under 60 characters, start with one emoji.
+Return a JSON object with a "comments" array.
+
+Example: {"comments": ["🎬 Hold that smile...", "📸 Perfect lighting..."]}`; 
+
+  try {
+    const completion = await groq.chat.completions.create({
+      messages: [
+        {
+          role: "system",
+          content: "You are a film director. Give brief, encouraging directions."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      model: textModel,
+      temperature: 0.8,
+      max_tokens: 400,
+      response_format: { type: "json_object" }
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (response) {
+      try {
+        // Try to parse as JSON object with comments array
+        const parsed = JSON.parse(response);
+        if (parsed.comments && Array.isArray(parsed.comments)) {
+          return parsed.comments;
+        }
+        // If it's directly an array
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch (parseError) {
+        // Try to extract array from the response
+        const match = response.match(/\[[\s\S]*\]/);
+        if (match) {
+          try {
+            const comments = JSON.parse(match[0]);
+            if (Array.isArray(comments)) {
+              return comments;
+            }
+          } catch (e) {
+            console.error('Failed to parse extracted array:', e);
+          }
+        }
+      }
+    }
+
+    // Fallback to default comments
+    throw new Error('Failed to generate commentary');
+  } catch (error) {
+    console.error('Error generating director commentary with Groq:', error);
+    
+    // Return creative default comments based on language
+    if (language === 'es') {
+      return [
+        "🎬 ¡Luces, cámara, acción! Comenzamos la magia...",
+        "📸 Mantén esa mirada... transmite tanto sentimiento...",
+        "✨ La luz dorada te favorece perfectamente...",
+        "🎥 Gira ligeramente hacia la cámara... ¡hermoso!",
+        "🎭 Deja que la emoción fluya naturalmente...",
+        "🌟 Este momento quedará grabado para siempre...",
+        "🎞️ ¡Qué toma tan cinematográfica! Pura magia...",
+        "💫 Los detalles están perfectos, sigue así..."
+      ];
+    }
+    
+    return [
+      "🎬 Lights, camera, action! Let the magic begin...",
+      "📸 Hold that gaze... it conveys so much emotion...",
+      "✨ The golden light suits you perfectly...",
+      "🎥 Turn slightly toward the camera... beautiful!",
+      "🎭 Let the emotion flow naturally...",
+      "🌟 This moment will be captured forever...",
+      "🎞️ What a cinematic shot! Pure magic...",
+      "💫 The details are perfect, keep it up..."
+    ];
+  }
+}
