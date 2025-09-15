@@ -48,7 +48,8 @@ export const editImage = async (
   base64ImageData: string, 
   mimeType: string, 
   prompt: string,
-  useDoublePass?: boolean
+  useDoublePass?: boolean,
+  browserFingerprint?: string
 ): Promise<{ data: string; mimeType: string }> => {
   const response = await fetch('/api/edit-image', {
     method: 'POST',
@@ -60,11 +61,21 @@ export const editImage = async (
       mimeType,
       prompt,
       useDoublePass,
+      browserFingerprint,
     }),
   });
 
   if (!response.ok) {
     const error = await response.json();
+    
+    // Create a custom error for rate limits
+    if (response.status === 429 && error.rateLimitInfo) {
+      const rateLimitError = new Error(error.error || 'Rate limit exceeded') as any;
+      rateLimitError.rateLimitInfo = error.rateLimitInfo;
+      rateLimitError.isRateLimit = true;
+      throw rateLimitError;
+    }
+    
     throw new Error(error.error || 'Failed to edit image');
   }
 

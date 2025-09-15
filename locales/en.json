@@ -48,5 +48,14 @@
   "estimatedTime": "Estimated time",
   "finalizingVideo": "Finalizing your video...",
   "directorNotes": "Director's Notes",
-  "creatingMagic": "✨ Creating something magical from your memories..."
+  "creatingMagic": "✨ Creating something magical from your memories...",
+  "rateLimitTitle": "Daily Limit Reached",
+  "rateLimitMessage": "You've reached your daily limit of {limit} photo restorations. This is a limited trial version.",
+  "rateLimitMessageChile": "You've used all {limit} of your daily photo restorations.",
+  "rateLimitMessageInternational": "You've used your {limit} daily photo restoration for international users.",
+  "rateLimitReset": "Your limit will reset tomorrow at midnight.",
+  "rateLimitMoreInfo": "For unlimited restorations, visit",
+  "rateLimitWebsite": "fenixblack.ai",
+  "rateLimitTryTomorrow": "Please try again tomorrow!",
+  "rateLimitRemaining": "You have {remaining} restorations remaining today."
 }

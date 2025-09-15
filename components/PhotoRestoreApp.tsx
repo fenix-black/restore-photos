@@ -1,16 +1,18 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import Dropzone from './Dropzone';
 import StepIndicator from './StepIndicator';
 import ImageRestorationStage from './ImageRestorationStage';
 import VideoDisplay from './VideoDisplay';
 import { RestartIcon } from './icons/RestartIcon';
 import LanguageSwitcher from './LanguageSwitcher';
+import RateLimitAlert from './RateLimitAlert';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { AppStep, ImageAnalysis } from '@/types';
 import * as apiClient from '@/services/api-client';
 import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '@/lib/share-utils';
+import { getBrowserFingerprint } from '@/lib/fingerprint';
 
 function PhotoRestoreApp() {
   const { t, language } = useLocalization();
@@ -24,6 +26,27 @@ function PhotoRestoreApp() {
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [displayVideoPrompt, setDisplayVideoPrompt] = useState<string>('');
   const [enhancedRestoration, setEnhancedRestoration] = useState<boolean>(true); // Default to enabled
+  const [browserFingerprint, setBrowserFingerprint] = useState<string | null>(null);
+  const [rateLimitInfo, setRateLimitInfo] = useState<{
+    limit: number;
+    remaining: number;
+    resetTime: Date;
+    country: string;
+  } | null>(null);
+
+  // Initialize browser fingerprint on component mount
+  useEffect(() => {
+    const initFingerprint = async () => {
+      try {
+        const fingerprint = await getBrowserFingerprint();
+        setBrowserFingerprint(fingerprint);
+      } catch (error) {
+        console.warn('Failed to generate browser fingerprint:', error);
+      }
+    };
+    
+    initFingerprint();
+  }, []);
 
   const resetState = () => {
     setCurrentStep('idle');
@@ -71,7 +94,8 @@ function PhotoRestoreApp() {
           base64, 
           mimeType, 
           "CRITICAL: Preserve ALL facial features, structures, and identities exactly - do not alter or distort any faces. Extract and isolate ONLY the photograph itself from the image, removing any background like tables, walls, hands, or frames. Correct the perspective to make it straight and aligned. Crop precisely to the photograph's actual edges, excluding any surrounding environment. Maintain all original photo content, colors, and especially facial integrity. Apply minimal transformation to avoid distortion.", 
-          false
+          false,
+          browserFingerprint || undefined
         );
         console.log('Photo extraction and perspective correction completed');
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
@@ -98,7 +122,7 @@ function PhotoRestoreApp() {
         console.log('Enhanced restoration disabled - Using single pass only');
       }
       
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass);
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -115,8 +139,19 @@ function PhotoRestoreApp() {
         setCurrentStep('readyForVideo');
       // }
 
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      
+      // Check if this is a rate limit error
+      if (err.isRateLimit && err.rateLimitInfo) {
+        setRateLimitInfo({
+          ...err.rateLimitInfo,
+          resetTime: new Date(err.rateLimitInfo.resetTime)
+        });
+        setCurrentStep('idle');
+        return;
+      }
+      
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       setCurrentStep('idle');
     }
@@ -209,6 +244,14 @@ function PhotoRestoreApp() {
 
   return (
     <div className="bg-brand-background min-h-screen text-brand-light font-sans">
+      {/* Rate Limit Alert Modal */}
+      {rateLimitInfo && (
+        <RateLimitAlert 
+          rateLimitInfo={rateLimitInfo} 
+          onClose={() => setRateLimitInfo(null)} 
+        />
+      )}
+      
       <header className="relative p-4 sm:p-6 flex flex-col justify-center items-center text-center">
         <div className="flex items-center gap-3">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-brand-secondary to-brand-accent bg-clip-text text-transparent">

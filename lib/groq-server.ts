@@ -96,7 +96,7 @@ Example: "${examplePrompt}"
       ],
       model: textModel,
       temperature: 0.7,
-      max_tokens: 1500,
+      //max_tokens: 1500,
       response_format: { type: "json_object" }
     });
 
@@ -167,7 +167,7 @@ Example: {"comments": ["🎬 Hold that smile...", "📸 Perfect lighting..."]}`;
       ],
       model: textModel,
       temperature: 0.8,
-      max_tokens: 400,
+      //max_tokens: 1000,
       response_format: { type: "json_object" }
     });
 
