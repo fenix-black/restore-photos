@@ -10,7 +10,7 @@ export function getGeminiAI() {
   return new GoogleGenAI({ apiKey });
 }
 
-const analysisModel = 'gemini-2.5-flash';
+const analysisModel = 'gemini-2.5-pro';
 const editModel = 'gemini-2.5-flash-image-preview';
 const videoModel = 'veo-3.0-fast-generate-001';
 
@@ -41,7 +41,7 @@ export const analyzeImage = async (
       ],
     },
     config: {
-      temperature: 0.9,
+      temperature: 0.5,
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -116,7 +116,7 @@ Example prompt: '${examplePrompt}'`
           },
           restorationPrompt: {
             type: Type.STRING,
-            description: "Create a concise, technical prompt to restore and colorize this photo. CRITICAL PRIORITIES: 1) MUST explicitly describe the lighting to preserve (use the lightingInfo you detected), 2) For SINGLE PERSON photos: emphasize preserving exact facial geometry, expression, head angle, clothing patterns, and avoid any beautification, 3) REMOVE all vintage/sepia tones - apply MODERN VIVID colors like a photo taken today. The prompt MUST include the specific lighting direction and quality you detected. If personCount is 1, add: 'Maintain exact facial proportions, expression, head angle, and clothing patterns without modification.' Keep it under 100 words. Example: 'Preserve the soft frontal light. Maintain exact facial features and clothing patterns. REMOVE vintage tones completely. Apply modern vivid colors: pure whites, deep blacks, natural skin without yellow cast. Make it look like taken with iPhone 15 - crystal clear, punchy saturated colors.'"
+            description: "Create a realistic colorization instruction. FORMAT: 'Add authentic colors to this [type] photo. Preserve [lighting]. Apply realistic color variation - some elements vibrant, others muted, as in genuine vintage color photography.' Focus on natural variation, not uniform treatment. Under 40 words."
           },
           suggestedFilename: {
             type: Type.STRING,
@@ -145,6 +145,8 @@ export const editImage = async (
   prompt: string
 ): Promise<{ data: string; mimeType: string; }> => {
   console.log("Starting image restoration with Google Gemini...");
+  //manually set additional things to make it more realistic
+  prompt += ". ADD REALISTIC COLOR: Not everything should be muted - real photos have VARIATION. Apply: 1) TRUE blacks for dark suits/piano (not gray), TRUE whites for white clothing (not cream). 2) Natural skin tones with individual variation - some pink, some tan, some pale. 3) Hair in realistic shades - some darker brown, some lighter, with natural highlights. 4) Let SOME colors be vibrant where appropriate (ties, ribbons) while others stay muted. 5) The piano should be rich dark wood, the wall neutral but not brown. Think genuine 1950s Kodachrome - it had punchy reds and blues alongside muted tones. AVOID the uniform pastel 'colorized' look.";
   console.log("Restoration prompt:", prompt);
   
   const ai = getGeminiAI();

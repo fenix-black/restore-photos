@@ -136,7 +136,7 @@ function PhotoRestoreApp() {
           if (analysis.hasManyPeople) reasons.push('many people (7+)');
           if (analysis.isBlackAndWhite) reasons.push('black & white');
           if (analysis.isVeryOld) reasons.push('very old photo');
-          console.log(`Enhanced restoration enabled - Using Gemini first, then Flux enhancement due to: ${reasons.join(', ')}`);
+          console.log(`Enhanced restoration enabled - Using CodeFormer first, then Gemini refinement due to: ${reasons.join(', ')}`);
         } else {
           console.log('Enhanced restoration enabled - Using single pass (modern/simple photo)');
         }

@@ -103,38 +103,42 @@ export async function POST(request: NextRequest) {
     try {
       // Use double-pass for: many people, B&W photos, or very old photos
       if (useDoublePass && process.env.REPLICATE_API_TOKEN) {
-        console.log('Using Gemini + Flux Restore double-pass restoration (enhanced mode)...');
-        
-        // First pass: Use Gemini with strict preservation for initial restoration
-        console.log('Enhanced restoration - Pass 1 of 2 (Gemini with strict preservation)...');
-        
-        let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
-        enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
-        
-        console.log('Gemini first pass prompt:', enhancedPrompt);
+        console.log('Using CodeFormer + Gemini double-pass restoration (enhanced mode)...');
         
         let firstPassResult;
-        try {
-          firstPassResult = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
-          console.log('Gemini first pass complete - strict preservation applied');
-        } catch (geminiError) {
-          console.error('Gemini first pass failed:', geminiError);
-          throw geminiError; // If Gemini fails, we can't continue
-        }
-        
-        // Second pass: Use Flux Restore for enhancement (on already good base)
-        console.log('Enhanced restoration - Pass 2 of 2 (Flux Restore enhancement)...');
         
         try {
-          // Flux Restore will enhance the Gemini output
-          result = await restoreImageWithReplicate(firstPassResult.data, firstPassResult.mimeType, "");
-          console.log('Flux Restore enhancement complete - final polish applied');
+          // First pass: Use CodeFormer for initial restoration
+          console.log('Enhanced restoration - Pass 1 of 2 (CodeFormer restoration)...');
+          
+          firstPassResult = await restoreImageWithReplicate(optimized.base64, optimized.mimeType, "");
+          console.log('CodeFormer first pass complete - initial restoration done');
         } catch (replicateError) {
-          console.error('Flux Restore enhancement failed, using Gemini result:', replicateError);
-          result = firstPassResult; // Fallback to Gemini result if Flux fails
+          console.error('CodeFormer first pass failed, falling back to Gemini-only:', replicateError);
+          // Fallback to Gemini for first pass if CodeFormer fails
+          let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+          enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
+          firstPassResult = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         }
         
-        console.log('Hybrid Gemini + Flux Restore restoration complete');
+        // Second pass: Use Gemini for intelligent refinement with strict preservation
+        console.log('Enhanced restoration - Pass 2 of 2 (Gemini refinement)...');
+        
+        // Create a refinement prompt for Gemini to perfect the CodeFormer output
+        let refinedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+        refinedPrompt = enhancePromptWithEyeColor(refinedPrompt, eyeColor, hasEyeColorPotential);
+        
+        console.log('Gemini refinement prompt:', refinedPrompt);
+        
+        try {
+          result = await editImage(firstPassResult.data, firstPassResult.mimeType, refinedPrompt);
+          console.log('Gemini second pass complete - refinement applied');
+        } catch (error) {
+          console.error('Gemini refinement pass failed, using CodeFormer result:', error);
+          result = firstPassResult; // Fallback to first pass if Gemini fails
+        }
+        
+        console.log('Hybrid CodeFormer + Gemini restoration complete');
       } else {
         // Single pass for regular images
         let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
