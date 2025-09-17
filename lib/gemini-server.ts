@@ -227,7 +227,7 @@ export const convertPromptToVeoJson = async (
   const flashModel = 'gemini-2.5-flash'; // Fast model for conversion
   
   // Include lighting info if available
-  const lightingContext = imageAnalysis?.lightingInfo ? 
+  const lightingContext = imageAnalysis?.lightingInfo?.description ? 
     `Lighting in the scene: ${imageAnalysis.lightingInfo.description}` : '';
   
   // Build the content parts

@@ -3,17 +3,25 @@ interface ShareOptions {
   text: string;
   url: string;
   fallbackMessage: string;
+  files?: File[];
 }
 
 export const shareContent = async (options: ShareOptions): Promise<void> => {
   // Check if Web Share API is supported
   if (navigator.share) {
     try {
-      await navigator.share({
+      const shareData: ShareData = {
         title: options.title,
         text: options.text,
         url: options.url,
-      });
+      };
+      
+      // Add files if provided and if the browser supports file sharing
+      if (options.files && options.files.length > 0 && navigator.canShare && navigator.canShare({ files: options.files })) {
+        shareData.files = options.files;
+      }
+      
+      await navigator.share(shareData);
       return;
     } catch (error) {
       // User cancelled or sharing failed, fall through to fallback

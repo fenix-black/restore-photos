@@ -83,7 +83,39 @@ function PhotoRestoreApp() {
       const { base64, mimeType } = await apiClient.fileToGenerativePart(file);
       setOriginalImage({ file, base64, mimeType });
 
-      const analysis = await apiClient.analyzeImage(base64, mimeType, language, t('videoPromptExample'));
+      // Retry logic for image analysis
+      let analysis: ImageAnalysis | undefined;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          analysis = await apiClient.analyzeImage(base64, mimeType, language, t('videoPromptExample'));
+          
+          // Validate that we have the essential fields
+          if (analysis && typeof analysis.containsChildren !== 'undefined') {
+            break; // Success, exit retry loop
+          }
+          throw new Error('Incomplete analysis response');
+        } catch (analysisError) {
+          retryCount++;
+          const errorMessage = analysisError instanceof Error ? analysisError.message : String(analysisError);
+          console.error(`Analysis attempt ${retryCount} failed:`, analysisError);
+          
+          if (retryCount >= maxRetries) {
+            throw new Error(`Failed to analyze image after ${maxRetries} attempts: ${errorMessage}`);
+          }
+          
+          // Wait a bit before retrying
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
+      
+      // Ensure analysis is defined after retry loop
+      if (!analysis) {
+        throw new Error('Failed to analyze image: analysis result is undefined');
+      }
+      
       console.log('Image analysis complete:', {
         containsChildren: analysis.containsChildren,
         needsPerspectiveCorrection: analysis.needsPerspectiveCorrection,
@@ -95,7 +127,11 @@ function PhotoRestoreApp() {
         lighting: analysis.lightingInfo,
         suggestedFilename: analysis.suggestedFilename
       });
-      console.log('Lighting analysis:', analysis.lightingInfo.description);
+      
+      // Use optional chaining to avoid errors if lightingInfo is undefined (but it should always be there)
+      if (analysis.lightingInfo?.description) {
+        console.log('Lighting analysis:', analysis.lightingInfo.description);
+      }
       console.log('Restoration prompt with lighting:', analysis.restorationPrompt);
       setImageAnalysis(analysis);
 
@@ -290,39 +326,144 @@ function PhotoRestoreApp() {
     }
   }
 
-  const handleDownloadVideo = () => {
+  const handleDownloadVideo = async () => {
     if (videoUrl) {
-      const link = document.createElement('a');
-      link.href = videoUrl;
-      const ext = 'mp4';
-      const timestamp = new Date().toISOString().split('T')[0];
-      const filename = imageAnalysis?.suggestedFilename 
-        ? `${imageAnalysis.suggestedFilename}-animated-${timestamp}.${ext}`
-        : `animated-memory-${timestamp}.${ext}`;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      try {
+        // Fetch the video blob to ensure proper handling
+        const response = await fetch(videoUrl);
+        const blob = await response.blob();
+        
+        // Create a new blob with explicit video/mp4 MIME type
+        const videoBlob = new Blob([blob], { type: 'video/mp4' });
+        
+        // Create a new blob URL
+        const blobUrl = URL.createObjectURL(videoBlob);
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = blobUrl;
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-animated-${timestamp}.mp4`
+          : `animated-memory-${timestamp}.mp4`;
+        link.download = filename;
+        link.style.display = 'none';
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        
+        // Cleanup
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } catch (error) {
+        console.error('Failed to download video:', error);
+        // Fallback to simple download
+        const link = document.createElement('a');
+        link.href = videoUrl;
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-animated-${timestamp}.mp4`
+          : `animated-memory-${timestamp}.mp4`;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     }
   };
 
   const handleSharePhoto = async () => {
+    const files: File[] = [];
+    
+    // Convert restored image to File object if available
+    if (restoredImage) {
+      try {
+        // Convert base64 to blob
+        const response = await fetch(`data:${restoredImage.mimeType};base64,${restoredImage.base64}`);
+        const blob = await response.blob();
+        
+        // Create filename
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-restored-${timestamp}.jpg`
+          : `restored-photo-${timestamp}.jpg`;
+        
+        // Create File object
+        const file = new File([blob], filename, { type: restoredImage.mimeType });
+        files.push(file);
+      } catch (error) {
+        console.error('Failed to prepare image for sharing:', error);
+      }
+    }
+    
     const shareOptions = createPhotoShareOptions(
       t('sharePhotoMessage'),
       t('shareUrl'),
       t('shareTitle'),
       t('shareFailedMessage')
     );
+    
+    // Add files to share options
+    if (files.length > 0) {
+      (shareOptions as any).files = files;
+    }
+    
     await shareContent(shareOptions);
   };
 
   const handleShareVideo = async () => {
+    const files: File[] = [];
+    
+    // Convert video to File object if available
+    if (videoUrl) {
+      try {
+        // Fetch the video blob
+        const response = await fetch(videoUrl);
+        const blob = await response.blob();
+        
+        // Create filename
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-animated-${timestamp}.mp4`
+          : `animated-memory-${timestamp}.mp4`;
+        
+        // Create File object
+        const file = new File([blob], filename, { type: 'video/mp4' });
+        files.push(file);
+      } catch (error) {
+        console.error('Failed to prepare video for sharing:', error);
+      }
+    }
+    
+    // Also include the restored image if available
+    if (restoredImage) {
+      try {
+        const response = await fetch(`data:${restoredImage.mimeType};base64,${restoredImage.base64}`);
+        const blob = await response.blob();
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = imageAnalysis?.suggestedFilename 
+          ? `${imageAnalysis.suggestedFilename}-restored-${timestamp}.jpg`
+          : `restored-photo-${timestamp}.jpg`;
+        const file = new File([blob], filename, { type: restoredImage.mimeType });
+        files.push(file);
+      } catch (error) {
+        console.error('Failed to prepare image for sharing:', error);
+      }
+    }
+    
     const shareOptions = createVideoShareOptions(
       t('shareVideoMessage'),
       t('shareUrl'),
       t('shareTitle'),
       t('shareFailedMessage')
     );
+    
+    // Add files to share options
+    if (files.length > 0) {
+      (shareOptions as any).files = files;
+    }
+    
     await shareContent(shareOptions);
   };
 
