@@ -142,26 +142,51 @@ Example prompt: '${examplePrompt}'`
 export const editImage = async (
   base64ImageData: string, 
   mimeType: string, 
-  prompt: string
+  prompt: string,
+  skipAdditionalPrompt: boolean = false,
+  originalImageData?: string,
+  originalMimeType?: string
 ): Promise<{ data: string; mimeType: string; }> => {
   console.log("Starting image restoration with Google Gemini...");
+  if (originalImageData) {
+    console.log("Using original image as reference for comparison");
+  }
   //manually set additional things to make it more realistic
-  prompt += ". ADD REALISTIC COLOR: Not everything should be muted - real photos have VARIATION. Apply: 1) TRUE blacks for dark suits/piano (not gray), TRUE whites for white clothing (not cream). 2) Natural skin tones with individual variation - some pink, some tan, some pale. 3) Hair in realistic shades - some darker brown, some lighter, with natural highlights. 4) Let SOME colors be vibrant where appropriate (ties, ribbons) while others stay muted. 5) The piano should be rich dark wood, the wall neutral but not brown. Think genuine 1950s Kodachrome - it had punchy reds and blues alongside muted tones. AVOID the uniform pastel 'colorized' look.";
-  console.log("Restoration prompt:", prompt);
+  if (!skipAdditionalPrompt) {
+    prompt += ". ADD REALISTIC COLOR: Not everything should be muted - real photos have VARIATION. Apply: 1) TRUE blacks for dark suits/piano (not gray), TRUE whites for white clothing (not cream). 2) Natural skin tones with individual variation - some pink, some tan, some pale. 3) Hair in realistic shades - some darker brown, some lighter, with natural highlights. 4) Let SOME colors be vibrant where appropriate (ties, ribbons) while others stay muted. 5) The piano should be rich dark wood, the wall neutral but not brown. Think genuine 1950s Kodachrome - it had punchy reds and blues alongside muted tones. AVOID the uniform pastel 'colorized' look.";
+  }
+  console.log("Restoration prompt:", skipAdditionalPrompt ? "[CLEAN PROMPT - no additions]" : "[WITH ADDITIONS]", prompt);
   
   const ai = getGeminiAI();
+  
+  // Build parts array with optional original image
+  const parts: any[] = [];
+  
+  // Add original image if provided for reference
+  if (originalImageData && originalMimeType) {
+    parts.push({
+      inlineData: {
+        data: originalImageData,
+        mimeType: originalMimeType,
+      },
+    });
+  }
+
+  // Add the restored image last
+  parts.push({
+    inlineData: {
+      data: base64ImageData,
+      mimeType,
+    },
+  });
+  
+  // Add the text prompt
+  parts.push({ text: prompt });
+  
   const response: GenerateContentResponse = await ai.models.generateContent({
     model: editModel,
     contents: {
-      parts: [
-        {
-          inlineData: {
-            data: base64ImageData,
-            mimeType,
-          },
-        },
-        { text: prompt },
-      ],
+      parts,
     },
     config: {
       responseModalities: [Modality.IMAGE, Modality.TEXT],

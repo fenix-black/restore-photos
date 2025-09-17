@@ -123,7 +123,7 @@ export const restoreImageWithReplicate = async (
       upscale: 2,
       face_upsample: true,
       background_enhance: true,
-      codeformer_fidelity: 1.0
+      codeformer_fidelity: 0.8
     };
     console.log("Starting image restoration with Replicate CodeFormer...");
     

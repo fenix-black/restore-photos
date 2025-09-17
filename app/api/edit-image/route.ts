@@ -8,6 +8,9 @@ import { checkRateLimit, incrementUsage } from '@/lib/rate-limiter';
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
 
+// Modernization prompt for multi-person vintage photos
+const MODERNIZATION_PROMPT = "Make this old photograph look like a picture taken today with a modern camera. Keep faces EXACTLY intact without duplicating or altering features, and DO NOT duplicate eyes, mouths, or facial parts. Use realistic skin, hair, and eye colors, natural lighting and shadows, and fill missing areas. Enhance clothing colors and textures to look realistic and modern, but preserve their original design and do not add new accessories. The result must not look like a colorized old photo, but like a newly captured image.";
+
 // Helper function to add strict preservation rules for single-person photos
 function enhancePromptWithStrictPreservation(originalPrompt: string, personCount?: number): string {
   // Only apply strict preservation for single-person photos
@@ -59,8 +62,13 @@ function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, ha
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean; personCount?: number } = await request.json();
-    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential, personCount } = body;
+    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean; personCount?: number; isBlackAndWhite?: boolean } = await request.json();
+    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential, personCount, isBlackAndWhite } = body;
+    
+    console.log('=== EDIT IMAGE REQUEST RECEIVED ===');
+    console.log(`useDoublePass: ${useDoublePass}, personCount: ${personCount}, isBlackAndWhite: ${isBlackAndWhite}`);
+    console.log(`Modernization eligible: ${isBlackAndWhite && personCount && personCount > 1} (B&W && count > 1)`);
+    console.log('===================================');
     
     if (!base64ImageData || !mimeType || !prompt) {
       return NextResponse.json(
@@ -139,6 +147,26 @@ export async function POST(request: NextRequest) {
         }
         
         console.log('Hybrid CodeFormer + Gemini restoration complete');
+        
+        // Third pass: Apply simple modernization for multi-person vintage photos
+        console.log(`Modernization pass check - isBlackAndWhite: ${isBlackAndWhite}, personCount: ${personCount}, should apply: ${isBlackAndWhite && personCount && personCount > 1}`);
+        if (isBlackAndWhite && personCount && personCount > 1) {
+          console.log(`STARTING MODERNIZATION PASS: Multi-person vintage photo detected (${personCount} people, B&W: ${isBlackAndWhite})`);
+          console.log('Modernization prompt being used:', MODERNIZATION_PROMPT.substring(0, 50) + "...");
+          
+          const modernizationPrompt = MODERNIZATION_PROMPT;
+          
+          try {
+            console.log('Calling editImage for modernization pass with original image reference...');
+            result = await editImage(result.data, result.mimeType, modernizationPrompt, true, optimized.base64, optimized.mimeType); // Skip additional prompt for clean modernization, include original as reference
+            console.log('MODERNIZATION PASS COMPLETE - natural colors should now be applied');
+          } catch (error) {
+            console.error('MODERNIZATION PASS FAILED, using previous result:', error);
+            // Keep the previous result if this pass fails
+          }
+        } else {
+          console.log(`SKIPPING MODERNIZATION PASS - conditions not met (B&W: ${isBlackAndWhite}, personCount: ${personCount})`);
+        }
       } else {
         // Single pass for regular images
         let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
@@ -146,6 +174,25 @@ export async function POST(request: NextRequest) {
         console.log('Final enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
         result = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         console.log('Google Gemini restoration successful');
+        
+        // Apply modernization pass for multi-person vintage photos (even in single-pass mode)
+        console.log(`Single-pass modernization check - isBlackAndWhite: ${isBlackAndWhite}, personCount: ${personCount}, should apply: ${isBlackAndWhite && personCount && personCount > 1}`);
+        if (isBlackAndWhite && personCount && personCount > 1) {
+          console.log(`STARTING MODERNIZATION PASS (single-pass mode): Multi-person vintage photo detected (${personCount} people, B&W: ${isBlackAndWhite})`);
+          
+          const modernizationPrompt = MODERNIZATION_PROMPT;
+          
+          try {
+            console.log('Calling editImage for modernization pass (single-pass mode) with original image reference...');
+            result = await editImage(result.data, result.mimeType, modernizationPrompt, true, optimized.base64, optimized.mimeType); // Skip additional prompt for clean modernization, include original as reference
+            console.log('MODERNIZATION PASS COMPLETE (single-pass mode) - natural colors should now be applied');
+          } catch (error) {
+            console.error('MODERNIZATION PASS FAILED (single-pass mode), using previous result:', error);
+            // Keep the previous result if this pass fails
+          }
+        } else {
+          console.log(`SKIPPING MODERNIZATION PASS (single-pass mode) - conditions not met (B&W: ${isBlackAndWhite}, personCount: ${personCount})`);
+        }
       }
       
       // Optimize the restored image for download (convert to JPEG with compression)

@@ -117,7 +117,8 @@ function PhotoRestoreApp() {
           browserFingerprint || undefined,
           undefined, // no eye color for perspective correction
           false, // no eye color potential for perspective correction
-          analysis.personCount // pass person count for strict preservation
+          analysis.personCount, // pass person count for strict preservation
+          analysis.isBlackAndWhite // pass B&W detection
         );
         console.log('Photo extraction and perspective correction completed');
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
@@ -144,7 +145,7 @@ function PhotoRestoreApp() {
         console.log('Enhanced restoration disabled - Using Gemini single pass only');
       }
       
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount);
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount, analysis.isBlackAndWhite);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -233,7 +234,8 @@ function PhotoRestoreApp() {
         browserFingerprint || undefined,
         eyeColor,
         imageAnalysis.hasEyeColorPotential,
-        imageAnalysis.personCount
+        imageAnalysis.personCount,
+        imageAnalysis.isBlackAndWhite
       );
 
       // Cache the result using restored image as key
