@@ -103,42 +103,38 @@ export async function POST(request: NextRequest) {
     try {
       // Use double-pass for: many people, B&W photos, or very old photos
       if (useDoublePass && process.env.REPLICATE_API_TOKEN) {
-        console.log('Using Flux Restore + Gemini double-pass restoration (crowd/B&W/old photo detected)...');
+        console.log('Using Gemini + Flux Restore double-pass restoration (enhanced mode)...');
+        
+        // First pass: Use Gemini with strict preservation for initial restoration
+        console.log('Enhanced restoration - Pass 1 of 2 (Gemini with strict preservation)...');
+        
+        let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+        enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
+        
+        console.log('Gemini first pass prompt:', enhancedPrompt);
         
         let firstPassResult;
-        
         try {
-          // First pass: Use Flux Restore Image for initial restoration (it doesn't use prompts)
-          console.log('Crowd restoration - Pass 1 of 2 (Flux Restore Image)...');
-          
-          firstPassResult = await restoreImageWithReplicate(optimized.base64, optimized.mimeType, "");
-          console.log('Flux Restore first pass complete - initial restoration done');
-        } catch (replicateError) {
-          console.error('Flux Restore first pass failed, falling back to Gemini-only:', replicateError);
-          // Fallback to Gemini for first pass if Flux Restore fails
-          let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
-          enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
           firstPassResult = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
+          console.log('Gemini first pass complete - strict preservation applied');
+        } catch (geminiError) {
+          console.error('Gemini first pass failed:', geminiError);
+          throw geminiError; // If Gemini fails, we can't continue
         }
         
-        // Second pass: Use Gemini for intelligent refinement
-        console.log('Crowd restoration - Pass 2 of 2 (Gemini refinement)...');
-        
-        // Create a refinement prompt for Gemini to perfect the Flux Restore output
-        let refinedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
-        refinedPrompt = enhancePromptWithEyeColor(refinedPrompt, eyeColor, hasEyeColorPotential); //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
-        
-        console.log('Gemini refinement prompt:', refinedPrompt);
+        // Second pass: Use Flux Restore for enhancement (on already good base)
+        console.log('Enhanced restoration - Pass 2 of 2 (Flux Restore enhancement)...');
         
         try {
-          result = await editImage(firstPassResult.data, firstPassResult.mimeType, refinedPrompt);
-          console.log('Gemini second pass complete - refinement applied');
-        } catch (error) {
-          console.error('Gemini refinement pass failed, using Flux Restore result:', error);
-          result = firstPassResult; // Fallback to first pass if Gemini fails
+          // Flux Restore will enhance the Gemini output
+          result = await restoreImageWithReplicate(firstPassResult.data, firstPassResult.mimeType, "");
+          console.log('Flux Restore enhancement complete - final polish applied');
+        } catch (replicateError) {
+          console.error('Flux Restore enhancement failed, using Gemini result:', replicateError);
+          result = firstPassResult; // Fallback to Gemini result if Flux fails
         }
         
-        console.log('Hybrid Flux Restore + Gemini restoration complete');
+        console.log('Hybrid Gemini + Flux Restore restoration complete');
       } else {
         // Single pass for regular images
         let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);

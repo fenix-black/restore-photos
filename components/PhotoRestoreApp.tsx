@@ -26,7 +26,7 @@ function PhotoRestoreApp() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [displayVideoPrompt, setDisplayVideoPrompt] = useState<string>('');
-  const [enhancedRestoration, setEnhancedRestoration] = useState<boolean>(true); // Default to enabled
+  const [enhancedRestoration, setEnhancedRestoration] = useState<boolean>(false); // Default to disabled for better face preservation
   const [browserFingerprint, setBrowserFingerprint] = useState<string | null>(null);
   const [rateLimitInfo, setRateLimitInfo] = useState<{
     limit: number;
@@ -136,12 +136,12 @@ function PhotoRestoreApp() {
           if (analysis.hasManyPeople) reasons.push('many people (7+)');
           if (analysis.isBlackAndWhite) reasons.push('black & white');
           if (analysis.isVeryOld) reasons.push('very old photo');
-          console.log(`Enhanced restoration enabled - Using double-pass due to: ${reasons.join(', ')}`);
+          console.log(`Enhanced restoration enabled - Using Gemini first, then Flux enhancement due to: ${reasons.join(', ')}`);
         } else {
           console.log('Enhanced restoration enabled - Using single pass (modern/simple photo)');
         }
       } else {
-        console.log('Enhanced restoration disabled - Using single pass only');
+        console.log('Enhanced restoration disabled - Using Gemini single pass only');
       }
       
       const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount);
@@ -203,14 +203,14 @@ function PhotoRestoreApp() {
   }, [imageAnalysis, restoredImage, t]);
 
   const handleEyeColorSelect = useCallback(async (eyeColor: EyeColor) => {
-    if (!originalImage || !imageAnalysis || isEyeColorLoading) return;
+    if (!originalImage || !restoredImage || !imageAnalysis || isEyeColorLoading) return;
 
     try {
       setIsEyeColorLoading(true);
       setError(null);
 
       // Check if this eye color is already cached
-      const cached = eyeColorCache.getCachedImage(originalImage.base64, eyeColor);
+      const cached = eyeColorCache.getCachedImage(restoredImage.base64, eyeColor);
       if (cached) {
         console.log(`Using cached image for eye color: ${eyeColor}`);
         setRestoredImage({ base64: cached.base64, mimeType: cached.mimeType });
@@ -218,32 +218,33 @@ function PhotoRestoreApp() {
         return;
       }
 
-      console.log(`Generating new restoration with eye color: ${eyeColor}`);
+      console.log(`Applying eye color ${eyeColor} to restored image`);
       
-      // Determine if we should use double-pass restoration
-      const shouldUseDoublePass = enhancedRestoration && (imageAnalysis.hasManyPeople || imageAnalysis.isBlackAndWhite || imageAnalysis.isVeryOld);
+      // Create a simpler prompt for eye color change on already restored image
+      const eyeColorPrompt = `ONLY change the eye color to natural ${eyeColor}. Keep EVERYTHING else exactly the same - face, expression, lighting, colors, clothing. Just make the irises a natural ${eyeColor} color with appropriate reflections and depth.`;
       
-      // Use the original image for restoration with eye color guidance
+      // Use the RESTORED image (not original) for eye color modification
+      // Single pass only since we're just changing eye color
       const restored = await apiClient.editImage(
-        originalImage.base64, 
-        originalImage.mimeType, 
-        imageAnalysis.restorationPrompt, 
-        shouldUseDoublePass, 
+        restoredImage.base64,  // Use restored image instead of original
+        restoredImage.mimeType, 
+        eyeColorPrompt,  // Simple eye color prompt
+        false,  // No double-pass needed for eye color change
         browserFingerprint || undefined,
         eyeColor,
         imageAnalysis.hasEyeColorPotential,
         imageAnalysis.personCount
       );
 
-      // Cache the result
-      eyeColorCache.setCachedImage(originalImage.base64, eyeColor, restored);
+      // Cache the result using restored image as key
+      eyeColorCache.setCachedImage(restoredImage.base64, eyeColor, restored);
       
       // Update state
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       setSelectedEyeColor(eyeColor);
       
       // Update cached colors list
-      const updatedCachedColors = eyeColorCache.getCachedEyeColors(originalImage.base64);
+      const updatedCachedColors = eyeColorCache.getCachedEyeColors(restoredImage.base64);
       setCachedEyeColors(updatedCachedColors);
       
       console.log(`Eye color restoration complete for: ${eyeColor}`);
@@ -253,7 +254,7 @@ function PhotoRestoreApp() {
     } finally {
       setIsEyeColorLoading(false);
     }
-  }, [originalImage, imageAnalysis, isEyeColorLoading, enhancedRestoration, browserFingerprint]);
+  }, [originalImage, restoredImage, imageAnalysis, isEyeColorLoading, enhancedRestoration, browserFingerprint]);
 
   const downloadImage = (base64: string, mimeType: string, filename: string) => {
     const link = document.createElement('a');
