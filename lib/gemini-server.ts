@@ -215,16 +215,314 @@ export const translateText = async (text: string, targetLanguage: 'es'): Promise
   return response.text?.trim() || '';
 };
 
+/**
+ * Convert a text prompt to VEO3 JSON structure format using Gemini 2.5 Flash
+ */
+export const convertPromptToVeoJson = async (
+  textPrompt: string, 
+  imageAnalysis?: any,
+  restoredImageData?: { base64: string; mimeType: string }
+): Promise<string> => {
+  const ai = getGeminiAI();
+  const flashModel = 'gemini-2.5-flash'; // Fast model for conversion
+  
+  // Include lighting info if available
+  const lightingContext = imageAnalysis?.lightingInfo ? 
+    `Lighting in the scene: ${imageAnalysis.lightingInfo.description}` : '';
+  
+  // Build the content parts
+  const parts: any[] = [];
+  
+  // Add restored image if provided so AI can see actual colors and details
+  if (restoredImageData) {
+    parts.push({
+      inlineData: {
+        data: restoredImageData.base64,
+        mimeType: restoredImageData.mimeType,
+      },
+    });
+    parts.push({
+      text: `This is the RESTORED and COLORIZED image that will be animated. Analyze the actual colors, clothing, and details visible in THIS image, not the original black and white photo.`
+    });
+  }
+  
+  // Add the main prompt
+  parts.push({
+    text: `You are creating a video animation prompt for a restored and colorized vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements.
+
+IMPORTANT CONTEXT:
+- The image has been restored and colorized - describe the ACTUAL colors you see in the restored image
+- We want to animate this photo with realistic, subtle movements (breathing, blinking, slight head turns, gentle expressions)
+- The video should feel like the photo is coming to life, NOT static
+
+Original animation request: "${textPrompt}"
+${lightingContext}
+
+Create a structured prompt that will animate this restored photograph with natural movement. Focus on:
+1. The ACTUAL colors visible in the restored image (skin tones, clothing colors, background)
+2. Subtle, realistic movements that bring life to the subjects
+3. Natural actions like breathing, blinking, slight smiles, or gentle gestures
+4. Ambient movement in the scene (hair in breeze, fabric movement, etc.)`
+  });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: flashModel,
+      contents: { parts },
+      config: {
+        temperature: 0.5, // Low temperature for consistent structure
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            shot: {
+              type: Type.OBJECT,
+              properties: {
+                composition: { type: Type.STRING, description: 'Camera shot type and framing (e.g., "Medium shot, eye-level angle")' },
+                camera_motion: { type: Type.STRING, description: 'Subtle camera movement to enhance life-like feel (e.g., "Gentle handheld movement", "Slight breathing motion")' },
+                frame_rate: { type: Type.STRING, description: 'Frame rate (default: "30fps")' },
+                film_grain: { type: Type.STRING, description: 'Film texture matching the restored image quality' }
+              }
+            },
+            subject: {
+              type: Type.OBJECT,
+              properties: {
+                description: { type: Type.STRING, description: 'Detailed description of subjects as they appear in the RESTORED image with actual skin tones and features' },
+                wardrobe: { type: Type.STRING, description: 'Actual clothing colors and details visible in the restored image (NOT "period clothing" but specific colors)' },
+                character_consistency: { type: Type.STRING, description: 'Maintain exact appearance from the restored colorized photograph' }
+              }
+            },
+            scene: {
+              type: Type.OBJECT,
+              properties: {
+                location: { type: Type.STRING, description: 'Setting as visible in the restored image' },
+                time_of_day: { type: Type.STRING, description: 'Time period based on the lighting in the restored image' },
+                environment: { type: Type.STRING, description: 'Environmental details with actual colors from the restored image' }
+              }
+            },
+            visual_details: {
+              type: Type.OBJECT,
+              properties: {
+                action: { type: Type.STRING, description: 'Natural movements to bring photo to life (breathing, blinking, subtle expressions, slight head movements)' },
+                props: { type: Type.STRING, description: 'Objects visible in the restored image with their actual colors' },
+                physics: { type: Type.STRING, description: 'Realistic, subtle movements - hair sway, fabric movement, natural breathing rhythm' }
+              }
+            },
+            cinematography: {
+              type: Type.OBJECT,
+              properties: {
+                lighting: { type: Type.STRING, description: 'Lighting as it appears in the restored image' },
+                tone: { type: Type.STRING, description: 'Visual tone matching the restored image mood' },
+                color_palette: { type: Type.STRING, description: 'ACTUAL colors visible in the restored image (e.g., "warm skin tones, blue dress, brown background") NOT "black and white"' }
+              }
+            },
+            audio: {
+              type: Type.OBJECT,
+              properties: {
+                dialogue: { type: Type.STRING, description: 'Always null - no conversations' },
+                primary_sounds: { type: Type.STRING, description: 'Subtle sounds from movements (soft breathing, fabric rustle, gentle footsteps)' },
+                ambient: { type: Type.STRING, description: 'Natural ambient sounds matching the scene' },
+                environmental_details: { type: Type.STRING, description: 'Environmental sounds that enhance the living photo effect' },
+                music: { type: Type.STRING, description: 'Always "No music" - natural sounds only' },
+                technical_effects: { type: Type.STRING, description: 'Natural, realistic audio processing' }
+              }
+            },
+            style: {
+              type: Type.OBJECT,
+              properties: {
+                visual_aesthetic: { type: Type.STRING, description: 'Overall visual style' },
+                aspect_ratio: { type: Type.STRING, description: 'Aspect ratio (default: "16:9")' },
+                quality: { type: Type.STRING, description: 'Video quality (default: "4K")' }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    const jsonText = response.text?.trim();
+    if (!jsonText) {
+      throw new Error("Failed to convert prompt to VEO3 format");
+    }
+    
+    // Parse and ensure dialogue is null
+    const parsed = JSON.parse(jsonText);
+    if (parsed.audio) {
+      parsed.audio.dialogue = null;
+    }
+    
+    return JSON.stringify(parsed);
+  } catch (error) {
+    console.error("Error converting prompt to VEO3 JSON:", error);
+    console.log("Falling back to original text prompt");
+    // Fallback to the original text prompt if AI conversion fails
+    return textPrompt;
+  }
+};
+
+/**
+ * Start async video generation with Gemini VEO3 and return operation details immediately
+ * This avoids timeout issues with long-running video generation on Vercel
+ */
+export const startGeminiVideoGeneration = async (
+  prompt: string,
+  imageData: { data: string; mimeType: string; },
+  useJsonFormat: boolean = false,
+  imageAnalysis?: any
+): Promise<string> => {
+  const ai = getGeminiAI();
+  
+  // Convert to JSON format if needed, passing the restored image for context
+  const finalPrompt = useJsonFormat ? 
+    await convertPromptToVeoJson(prompt, imageAnalysis, { 
+      base64: imageData.data, 
+      mimeType: imageData.mimeType 
+    }) : 
+    prompt;
+  console.log(`Starting Gemini video generation with ${useJsonFormat ? 'JSON' : 'text'} prompt format`);
+  if (useJsonFormat) {
+    console.log('VEO3 JSON prompt:', finalPrompt);
+  }
+  
+  const operation = await ai.models.generateVideos({
+    model: videoModel,
+    prompt: finalPrompt,
+    image: {
+      imageBytes: imageData.data,
+      mimeType: imageData.mimeType,
+    },
+    config: { numberOfVideos: 1 }
+  });
+
+  console.log('Gemini video generation started with operation:', operation.name);
+  
+  // Return a serialized version of the operation for later use
+  // We store essential fields that we'll need to reconstruct the operation
+  const operationData = JSON.stringify({
+    name: operation.name,
+    metadata: operation.metadata,
+    done: operation.done
+  });
+  
+  return operationData;
+};
+
+/**
+ * Check the status of a Gemini video generation operation
+ * Returns status and output URL when ready
+ */
+export const checkGeminiVideoStatus = async (
+  operationDataStr: string
+): Promise<{ status: string; output?: string }> => {
+  const ai = getGeminiAI();
+  const apiKey = process.env.GOOGLE_GENAI_API_KEY;
+  
+  try {
+    // Parse the operation data
+    const operationData = JSON.parse(operationDataStr);
+    const operationName = operationData.name;
+    
+    if (!operationName) {
+      console.error('No operation name found in operation data');
+      return { status: 'failed' };
+    }
+    
+    // Instead of using getVideosOperation, we'll poll the operation directly
+    // by making a new generateVideos call with the same parameters and checking if it's done
+    // This is a workaround since we can't properly reconstruct the operation object
+    
+    // Alternative approach: Use the REST API directly to check status
+    const baseUrl = 'https://generativelanguage.googleapis.com/v1beta/';
+    const url = `${baseUrl}${operationName}?key=${apiKey}`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    });
+    
+    if (!response.ok) {
+      console.error('Failed to check operation status:', response.statusText);
+      return { status: 'failed' };
+    }
+    
+    const operation = await response.json();
+    
+    console.log(`Gemini operation ${operationName} status: ${operation.done ? 'completed' : 'processing'}`);
+    
+    // Log the full operation when done to see the structure
+    if (operation.done) {
+      console.log('Completed operation structure:', JSON.stringify(operation, null, 2));
+    }
+    
+    if (operation.error) {
+      console.error('Gemini video generation error:', operation.error);
+      return { status: 'failed' };
+    }
+    
+    // Check for video URL in the actual REST API response location
+    if (operation.done && operation.response?.generateVideoResponse?.generatedSamples?.[0]?.video?.uri) {
+      const videoUrl = operation.response.generateVideoResponse.generatedSamples[0].video.uri;
+      console.log('Found video URL:', videoUrl);
+      // Add API key to the URL for authentication
+      const authenticatedUrl = `${videoUrl}&key=${apiKey}`;
+      return {
+        status: 'succeeded',
+        output: authenticatedUrl
+      };
+    }
+    
+    // Fallback: Check for video URL in the SDK expected location (for compatibility)
+    if (operation.done && operation.response?.generatedVideos?.[0]?.video?.uri) {
+      const videoUrl = operation.response.generatedVideos[0].video.uri;
+      console.log('Found video URL (SDK path):', videoUrl);
+      // Add API key to the URL for authentication
+      const authenticatedUrl = `${videoUrl}&key=${apiKey}`;
+      return {
+        status: 'succeeded',
+        output: authenticatedUrl
+      };
+    }
+    
+    if (operation.done) {
+      console.error('Operation completed but no video URL found in response');
+    }
+    
+    return {
+      status: operation.done ? 'succeeded' : 'processing'
+    };
+  } catch (error) {
+    console.error('Check Gemini video status error:', error);
+    return { status: 'failed' };
+  }
+};
+
+// Keep the original synchronous function for backward compatibility
 export const generateVideo = async (
   prompt: string,
-  imageData: { data: string; mimeType: string; }
+  imageData: { data: string; mimeType: string; },
+  useJsonFormat: boolean = false,
+  imageAnalysis?: any
 ): Promise<string> => {
   const ai = getGeminiAI();
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   
+  // Convert to JSON format if needed, passing the restored image for context
+  const finalPrompt = useJsonFormat ? 
+    await convertPromptToVeoJson(prompt, imageAnalysis, { 
+      base64: imageData.data, 
+      mimeType: imageData.mimeType 
+    }) : 
+    prompt;
+  console.log(`Generating video with ${useJsonFormat ? 'JSON' : 'text'} prompt format`);
+  if (useJsonFormat) {
+    console.log('VEO3 JSON prompt:', finalPrompt);
+  }
+  
   let operation = await ai.models.generateVideos({
     model: videoModel,
-    prompt: prompt,
+    prompt: finalPrompt,
     image: {
       imageBytes: imageData.data,
       mimeType: imageData.mimeType,
@@ -234,7 +532,7 @@ export const generateVideo = async (
 
   while (operation && !operation.done) {
     await new Promise(resolve => setTimeout(resolve, 10000));
-    operation = await ai.operations.getVideosOperation({ operation: operation });
+    operation = await ai.operations.getVideosOperation({ operation: operation as any });
     
     if (!operation) {
       throw new Error("Failed to get video generation status from the server.");

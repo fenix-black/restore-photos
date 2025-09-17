@@ -191,7 +191,9 @@ function PhotoRestoreApp() {
         imageAnalysis.videoPrompt, // Always use the original English prompt for the model
         setLoadingMessage,
         { base64: restoredImage.base64, mimeType: restoredImage.mimeType },
-        progressMessages
+        progressMessages,
+        imageAnalysis.containsChildren, // Pass the child detection flag
+        imageAnalysis // Pass full analysis for better prompt conversion
       );
       setVideoUrl(url);
       setCurrentStep('done');

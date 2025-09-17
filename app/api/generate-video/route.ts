@@ -5,8 +5,12 @@ import {
   startVideoGeneration,
   checkVideoGenerationStatus 
 } from '@/lib/replicate-server';
-// Fallback to Gemini if needed (you can remove this import if not using fallback)
-import { generateVideo as generateVideoWithGemini } from '@/lib/gemini-server';
+// Import both sync and async Gemini functions
+import { 
+  generateVideo as generateVideoWithGemini,
+  startGeminiVideoGeneration,
+  checkGeminiVideoStatus
+} from '@/lib/gemini-server';
 import { GenerateVideoRequest } from '@/types';
 
 // With async mode, we only need enough time to start/check predictions
@@ -19,13 +23,23 @@ const USE_ASYNC_VIDEO = process.env.USE_ASYNC_VIDEO === 'true'; // Enable async 
 
 export async function POST(request: NextRequest) {
   try {
-    const body: GenerateVideoRequest & { predictionId?: string } = await request.json();
-    const { prompt, imageData, predictionId } = body;
+    const body: GenerateVideoRequest & { 
+      predictionId?: string; 
+      operationName?: string; // For Gemini async operations
+      containsChildren?: boolean; 
+      imageAnalysis?: any 
+    } = await request.json();
+    const { prompt, imageData, predictionId, operationName, containsChildren, imageAnalysis } = body;
     
-    // Check if this is a status check request
+    // Check if this is a status check request for Replicate
     if (predictionId) {
-      // Check video generation status
       const result = await checkVideoGenerationStatus(predictionId);
+      return NextResponse.json(result);
+    }
+    
+    // Check if this is a status check request for Gemini
+    if (operationName) {
+      const result = await checkGeminiVideoStatus(operationName);
       return NextResponse.json(result);
     }
     
@@ -39,7 +53,12 @@ export async function POST(request: NextRequest) {
 
     let result: string;
     
-    if (VIDEO_PROVIDER === 'replicate') {
+    // Override provider selection based on child detection
+    // Use Gemini VEO3 for non-child content (safer to use newer model)
+    const activeProvider = containsChildren === false ? 'gemini' : VIDEO_PROVIDER;
+    console.log(`Using video provider: ${activeProvider} (containsChildren: ${containsChildren})`);
+    
+    if (activeProvider === 'replicate') {
       // Check if async mode is enabled
       if (USE_ASYNC_VIDEO) {
         // Start async generation and return prediction ID
@@ -67,11 +86,34 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ videoBase64 });
       }
     } else {
-      // Fallback to Gemini (original implementation)
-      const videoBase64 = await generateVideoWithGemini(prompt, {
-        data: imageData.base64,
-        mimeType: imageData.mimeType
-      });
+      // Use Gemini with JSON format for better structured prompts
+      const useJsonFormat = true; // Use JSON format for VEO3
+      
+      // Check if async mode is enabled for Gemini
+      if (USE_ASYNC_VIDEO) {
+        // Start async generation and return operation name
+        const operationName = await startGeminiVideoGeneration(
+          prompt, 
+          {
+            data: imageData.base64,
+            mimeType: imageData.mimeType
+          },
+          useJsonFormat,
+          imageAnalysis // Pass image analysis for better prompt conversion
+        );
+        return NextResponse.json({ operationName });
+      }
+      
+      // Synchronous mode (not recommended for Vercel due to timeouts)
+      const videoBase64 = await generateVideoWithGemini(
+        prompt, 
+        {
+          data: imageData.base64,
+          mimeType: imageData.mimeType
+        },
+        useJsonFormat,
+        imageAnalysis
+      );
       return NextResponse.json({ videoBase64 });
     }
   } catch (error) {

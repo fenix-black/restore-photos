@@ -117,7 +117,9 @@ export const generateVideo = async (
   prompt: string,
   onProgress: (message: string) => void,
   imageData: ImageData,
-  progressMessages: string[]
+  progressMessages: string[],
+  containsChildren?: boolean,
+  imageAnalysis?: any
 ): Promise<string> => {
   let messageIndex = 0;
   const interval = setInterval(() => {
@@ -140,6 +142,8 @@ export const generateVideo = async (
           base64: imageData.base64,
           mimeType: imageData.mimeType,
         },
+        containsChildren,
+        imageAnalysis,
       }),
     });
 
@@ -150,8 +154,8 @@ export const generateVideo = async (
 
     const startResult = await startResponse.json();
     
-    // Check if we got a prediction ID (async mode) or the actual video
-    if (startResult.predictionId) {
+    // Check if we got a prediction ID (Replicate) or operation name (Gemini) for async mode
+    if (startResult.predictionId || startResult.operationName) {
       // Async mode: poll for completion
       const maxAttempts = 120; // 10 minutes with 5-second intervals
       let attempts = 0;
@@ -167,6 +171,7 @@ export const generateVideo = async (
           },
           body: JSON.stringify({
             predictionId: startResult.predictionId,
+            operationName: startResult.operationName,
           }),
         });
         
