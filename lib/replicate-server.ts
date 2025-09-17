@@ -107,17 +107,29 @@ export const restoreImageWithReplicate = async (
     const dataUri = `data:${mimeType};base64,${base64ImageData}`;
 
     // Configure Flux Restore Image model input (specialized for restoration)
-    const input = {
+    /*const input = {
       input_image: dataUri,
       output_format: "png",
       safety_tolerance: 2
     };
-
     console.log("Starting image restoration with Replicate Flux Restore Image...");
-    
     // Run the model
     const output = await replicate.run(
       "flux-kontext-apps/restore-image", 
+      { input }
+    ) as any;*/
+    const input = {
+      image: dataUri,
+      upscale: 2,
+      face_upsample: true,
+      background_enhance: true,
+      codeformer_fidelity: 1.0
+    };
+    console.log("Starting image restoration with Replicate CodeFormer...");
+    
+    // Run the model
+    const output = await replicate.run(
+      "sczhou/codeformer:7de2ea26c616d5bf2245ad0d5e24f0ff9a6204578a5c876db53142edd9d2cd56", 
       { input }
     ) as any;
 
@@ -126,7 +138,7 @@ export const restoreImageWithReplicate = async (
     
     if (!output) {
       console.error("Invalid output from Replicate:", output);
-      throw new Error("No output returned from Replicate Flux Restore Image");
+      throw new Error("No output returned from Replicate CodeFormer Image");
     }
     
     // Get the image output (Flux Restore typically returns a single object)
