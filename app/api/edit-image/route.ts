@@ -8,10 +8,30 @@ import { checkRateLimit, incrementUsage } from '@/lib/rate-limiter';
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
 
+// Helper function to enhance restoration prompt with eye color guidance
+function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, hasEyeColorPotential?: boolean): string {
+  // Only apply eye color guidance if both conditions are met:
+  // 1. Eye color is specified
+  // 2. Image has eye color potential (single person + B&W/sepia)
+  if (!eyeColor || !hasEyeColorPotential) {
+    return originalPrompt;
+  }
+
+  // Add eye color guidance to the prompt
+  const eyeColorGuidance = ` Pay special attention to the eyes - ensure they have a natural ${eyeColor} color that looks realistic and beautiful.`;
+  
+  // Insert the eye color guidance before the final period or at the end
+  if (originalPrompt.endsWith('.')) {
+    return originalPrompt.slice(0, -1) + eyeColorGuidance + '.';
+  } else {
+    return originalPrompt + eyeColorGuidance;
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string } = await request.json();
-    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint } = body;
+    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean } = await request.json();
+    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential } = body;
     
     if (!base64ImageData || !mimeType || !prompt) {
       return NextResponse.json(
@@ -67,14 +87,15 @@ export async function POST(request: NextRequest) {
         } catch (replicateError) {
           console.error('Flux Restore first pass failed, falling back to Gemini-only:', replicateError);
           // Fallback to Gemini for first pass if Flux Restore fails
-          firstPassResult = await editImage(optimized.base64, optimized.mimeType, prompt);
+          const enhancedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential);
+          firstPassResult = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         }
         
         // Second pass: Use Gemini for intelligent refinement
         console.log('Crowd restoration - Pass 2 of 2 (Gemini refinement)...');
         
         // Create a refinement prompt for Gemini to perfect the Flux Restore output
-        const refinedPrompt = prompt; //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
+        const refinedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential); //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
         
         console.log('Gemini refinement prompt:', refinedPrompt);
         
@@ -89,7 +110,8 @@ export async function POST(request: NextRequest) {
         console.log('Hybrid Flux Restore + Gemini restoration complete');
       } else {
         // Single pass for regular images
-        result = await editImage(optimized.base64, optimized.mimeType, prompt);
+        const enhancedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential);
+        result = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         console.log('Google Gemini restoration successful');
       }
       

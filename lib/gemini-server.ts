@@ -37,7 +37,7 @@ export const analyzeImage = async (
             mimeType,
           },
         },
-        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if this is a 'photo of a photo' (physical photograph captured within another scene like on a table, wall, or in hands) that needs extraction and perspective correction. Third, create a SHORT, CONCISE restoration prompt (under 50 words) focusing PRIMARILY on: preserving and respecting facial features and structures exactly, then enhancing with vibrant colors, sharp details, good contrast. IMPORTANT: Do NOT include perspective or geometry corrections in the restoration prompt as they are handled separately. Fourth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Fifth, generate a suggested filename in ${currentLanguage}.` },
+        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if this is a 'photo of a photo' (physical photograph captured within another scene like on a table, wall, or in hands) that needs extraction and perspective correction. Third, count the exact number of people visible in the photograph - be precise (0, 1, 2, 3, etc). Fourth, determine if the image has eye color enhancement potential (single person + black & white/sepia/lacks color). Fifth, create a SHORT, CONCISE restoration prompt (under 50 words) focusing PRIMARILY on: preserving and respecting facial features and structures exactly, then enhancing with vibrant colors, sharp details, good contrast. IMPORTANT: Do NOT include perspective or geometry corrections in the restoration prompt as they are handled separately. Sixth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Seventh, generate a suggested filename in ${currentLanguage}.` },
       ],
     },
     config: {
@@ -65,6 +65,14 @@ export const analyzeImage = async (
           isVeryOld: {
             type: Type.BOOLEAN,
             description: "True if the photograph appears to be very old (pre-1960s) based on visible aging, damage, fading, or photographic style."
+          },
+          personCount: {
+            type: Type.NUMBER,
+            description: "Exact count of people visible in the photograph. Count all faces and bodies carefully. Return the precise number (0, 1, 2, 3, etc). If more than 10 people, return the exact count if possible, otherwise return 10+."
+          },
+          hasEyeColorPotential: {
+            type: Type.BOOLEAN,
+            description: "True if this image is suitable for eye color enhancement. This requires BOTH conditions: (1) exactly one person visible in the image, AND (2) the image is black & white, sepia, or lacks natural colors. Only return true if both conditions are met."
           },
           videoPrompt: {
             type: Type.STRING,

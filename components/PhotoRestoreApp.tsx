@@ -13,6 +13,7 @@ import { AppStep, ImageAnalysis } from '@/types';
 import * as apiClient from '@/services/api-client';
 import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '@/lib/share-utils';
 import { getBrowserFingerprint } from '@/lib/fingerprint';
+import { eyeColorCache, EyeColor } from '@/lib/eye-color-cache';
 
 function PhotoRestoreApp() {
   const { t, language } = useLocalization();
@@ -33,6 +34,11 @@ function PhotoRestoreApp() {
     resetTime: Date;
     country: string;
   } | null>(null);
+  
+  // Eye color selection state
+  const [selectedEyeColor, setSelectedEyeColor] = useState<EyeColor | undefined>(undefined);
+  const [cachedEyeColors, setCachedEyeColors] = useState<EyeColor[]>([]);
+  const [isEyeColorLoading, setIsEyeColorLoading] = useState(false);
 
   // Initialize browser fingerprint on component mount
   useEffect(() => {
@@ -60,6 +66,12 @@ function PhotoRestoreApp() {
       URL.revokeObjectURL(videoUrl);
     }
     setVideoUrl(null);
+    // Clear eye color state
+    setSelectedEyeColor(undefined);
+    setCachedEyeColors([]);
+    setIsEyeColorLoading(false);
+    // Clear cache for previous image
+    eyeColorCache.clearAllCache();
   };
 
   const handleImageDrop = useCallback(async (file: File) => {
@@ -95,7 +107,9 @@ function PhotoRestoreApp() {
           mimeType, 
           "CRITICAL: Preserve ALL facial features, structures, and identities exactly - do not alter or distort any faces. Extract and isolate ONLY the photograph itself from the image, removing any background like tables, walls, hands, or frames. Correct the perspective to make it straight and aligned. Crop precisely to the photograph's actual edges, excluding any surrounding environment. Maintain all original photo content, colors, and especially facial integrity. Apply minimal transformation to avoid distortion.", 
           false,
-          browserFingerprint || undefined
+          browserFingerprint || undefined,
+          undefined, // no eye color for perspective correction
+          false // no eye color potential for perspective correction
         );
         console.log('Photo extraction and perspective correction completed');
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
@@ -122,7 +136,7 @@ function PhotoRestoreApp() {
         console.log('Enhanced restoration disabled - Using single pass only');
       }
       
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined);
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -179,6 +193,58 @@ function PhotoRestoreApp() {
       setLoadingMessage('');
     }
   }, [imageAnalysis, restoredImage, t]);
+
+  const handleEyeColorSelect = useCallback(async (eyeColor: EyeColor) => {
+    if (!originalImage || !imageAnalysis || isEyeColorLoading) return;
+
+    try {
+      setIsEyeColorLoading(true);
+      setError(null);
+
+      // Check if this eye color is already cached
+      const cached = eyeColorCache.getCachedImage(originalImage.base64, eyeColor);
+      if (cached) {
+        console.log(`Using cached image for eye color: ${eyeColor}`);
+        setRestoredImage({ base64: cached.base64, mimeType: cached.mimeType });
+        setSelectedEyeColor(eyeColor);
+        return;
+      }
+
+      console.log(`Generating new restoration with eye color: ${eyeColor}`);
+      
+      // Determine if we should use double-pass restoration
+      const shouldUseDoublePass = enhancedRestoration && (imageAnalysis.hasManyPeople || imageAnalysis.isBlackAndWhite || imageAnalysis.isVeryOld);
+      
+      // Use the original image for restoration with eye color guidance
+      const restored = await apiClient.editImage(
+        originalImage.base64, 
+        originalImage.mimeType, 
+        imageAnalysis.restorationPrompt, 
+        shouldUseDoublePass, 
+        browserFingerprint || undefined,
+        eyeColor,
+        imageAnalysis.hasEyeColorPotential
+      );
+
+      // Cache the result
+      eyeColorCache.setCachedImage(originalImage.base64, eyeColor, restored);
+      
+      // Update state
+      setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
+      setSelectedEyeColor(eyeColor);
+      
+      // Update cached colors list
+      const updatedCachedColors = eyeColorCache.getCachedEyeColors(originalImage.base64);
+      setCachedEyeColors(updatedCachedColors);
+      
+      console.log(`Eye color restoration complete for: ${eyeColor}`);
+    } catch (err: any) {
+      console.error('Eye color restoration failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to apply eye color enhancement.');
+    } finally {
+      setIsEyeColorLoading(false);
+    }
+  }, [originalImage, imageAnalysis, isEyeColorLoading, enhancedRestoration, browserFingerprint]);
 
   const downloadImage = (base64: string, mimeType: string, filename: string) => {
     const link = document.createElement('a');
@@ -333,6 +399,11 @@ function PhotoRestoreApp() {
                     isDownloadable={!!restoredImage && ['readyForVideo', 'generatingVideo', 'done'].includes(currentStep)}
                     onDownload={handleDownloadRestored}
                     onShare={handleSharePhoto}
+                    showEyeColorSelector={imageAnalysis?.hasEyeColorPotential && ['readyForVideo', 'generatingVideo', 'done'].includes(currentStep)}
+                    selectedEyeColor={selectedEyeColor}
+                    cachedEyeColors={cachedEyeColors}
+                    isEyeColorLoading={isEyeColorLoading}
+                    onEyeColorSelect={handleEyeColorSelect}
                   />
                 )}
 

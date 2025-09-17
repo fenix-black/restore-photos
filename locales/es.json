@@ -57,5 +57,11 @@
   "rateLimitMoreInfo": "Para restauraciones ilimitadas, visita",
   "rateLimitWebsite": "fenixblack.ai",
   "rateLimitTryTomorrow": "¡Por favor, inténtalo de nuevo mañana!",
-  "rateLimitRemaining": "Te quedan {remaining} restauraciones disponibles hoy."
+  "rateLimitRemaining": "Te quedan {remaining} restauraciones disponibles hoy.",
+  "eyeColorSelectorTitle": "Elegir Color de Ojos",
+  "eyeColorSelectorTooltip": "Selecciona diferentes colores de ojos para mejorar el retrato. Los colores previamente seleccionados se cargan instantáneamente desde caché.",
+  "eyeColorSelectorSelectColor": "Seleccionar color de ojos...",
+  "eyeColorSelectorCached": "En caché",
+  "eyeColorSelectorCollapse": "Contraer",
+  "eyeColorSelectorEnhancing": "Mejorando color de ojos..."
 }

@@ -14,6 +14,8 @@ export interface ImageAnalysis {
   hasManyPeople: boolean; // True if image has 7+ people
   isBlackAndWhite: boolean; // True if B&W or minimal colors
   isVeryOld: boolean; // True if pre-1960s or very aged
+  personCount: number; // Exact count: 0, 1, or 2+ (where 2+ means many)
+  hasEyeColorPotential: boolean; // True if single person + B&W/sepia/lacks color
   videoPrompt: string;
   restorationPrompt: string;
   suggestedFilename: string;

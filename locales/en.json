@@ -57,5 +57,11 @@
   "rateLimitMoreInfo": "For unlimited restorations, visit",
   "rateLimitWebsite": "fenixblack.ai",
   "rateLimitTryTomorrow": "Please try again tomorrow!",
-  "rateLimitRemaining": "You have {remaining} restorations remaining today."
+  "rateLimitRemaining": "You have {remaining} restorations remaining today.",
+  "eyeColorSelectorTitle": "Choose Eye Color",
+  "eyeColorSelectorTooltip": "Select different eye colors to enhance the portrait. Previously selected colors load instantly from cache.",
+  "eyeColorSelectorSelectColor": "Select eye color...",
+  "eyeColorSelectorCached": "Cached",
+  "eyeColorSelectorCollapse": "Collapse",
+  "eyeColorSelectorEnhancing": "Enhancing eye color..."
 }

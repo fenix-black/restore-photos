@@ -2,9 +2,11 @@
 
 import React from 'react';
 import Spinner from './Spinner';
+import EyeColorSelector from './EyeColorSelector';
 import { DownloadIcon } from './icons/DownloadIcon';
 import { ShareIcon } from './icons/ShareIcon';
 import { useLocalization } from '@/contexts/LocalizationContext';
+import { EyeColor } from '@/lib/eye-color-cache';
 
 interface ImageRestorationStageProps {
   title: string;
@@ -14,6 +16,12 @@ interface ImageRestorationStageProps {
   isDownloadable?: boolean;
   onDownload?: () => void;
   onShare?: () => void;
+  // Eye color selection props
+  showEyeColorSelector?: boolean;
+  selectedEyeColor?: EyeColor;
+  cachedEyeColors?: EyeColor[];
+  isEyeColorLoading?: boolean;
+  onEyeColorSelect?: (eyeColor: EyeColor) => void;
 }
 
 const ImageDisplay: React.FC<{ label: string; imageSrc: string | null; isLoading?: boolean; isDownloadable?: boolean; onDownload?: () => void; onShare?: () => void; }> = ({ label, imageSrc, isLoading = false, isDownloadable, onDownload, onShare }) => {
@@ -53,14 +61,37 @@ const ImageDisplay: React.FC<{ label: string; imageSrc: string | null; isLoading
   )
 };
 
-const ImageRestorationStage: React.FC<ImageRestorationStageProps> = ({ title, originalImage, processedImage, isLoading, isDownloadable, onDownload, onShare }) => {
+const ImageRestorationStage: React.FC<ImageRestorationStageProps> = ({ 
+  title, 
+  originalImage, 
+  processedImage, 
+  isLoading, 
+  isDownloadable, 
+  onDownload, 
+  onShare,
+  showEyeColorSelector,
+  selectedEyeColor,
+  cachedEyeColors,
+  isEyeColorLoading,
+  onEyeColorSelect
+}) => {
   const { t } = useLocalization();
   return (
     <section className="w-full p-6 bg-brand-dark/50 rounded-2xl animate-slide-in-up">
       <h3 className="text-xl font-bold mb-4 text-center text-blue-300">{title}</h3>
       <div className="flex flex-col sm:flex-row gap-6">
         <ImageDisplay label={t('labelBefore')} imageSrc={originalImage} />
-        <ImageDisplay label={t('labelAfter')} imageSrc={processedImage} isLoading={isLoading} isDownloadable={isDownloadable} onDownload={onDownload} onShare={onShare} />
+        <div className="flex-1 flex flex-col">
+          <ImageDisplay label={t('labelAfter')} imageSrc={processedImage} isLoading={isLoading} isDownloadable={isDownloadable} onDownload={onDownload} onShare={onShare} />
+          {showEyeColorSelector && processedImage && !isLoading && onEyeColorSelect && (
+            <EyeColorSelector
+              onEyeColorSelect={onEyeColorSelect}
+              selectedColor={selectedEyeColor}
+              isLoading={isEyeColorLoading}
+              cachedColors={cachedEyeColors}
+            />
+          )}
+        </div>
       </div>
     </section>
   );
