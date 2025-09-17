@@ -237,7 +237,10 @@ function PhotoRestoreApp() {
       );
 
       // Cache the result using restored image as key
-      eyeColorCache.setCachedImage(restoredImage.base64, eyeColor, restored);
+      eyeColorCache.setCachedImage(restoredImage.base64, eyeColor, {
+        base64: restored.data,
+        mimeType: restored.mimeType
+      });
       
       // Update state
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
