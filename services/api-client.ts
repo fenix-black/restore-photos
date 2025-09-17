@@ -51,7 +51,8 @@ export const editImage = async (
   useDoublePass?: boolean,
   browserFingerprint?: string,
   eyeColor?: string,
-  hasEyeColorPotential?: boolean
+  hasEyeColorPotential?: boolean,
+  personCount?: number
 ): Promise<{ data: string; mimeType: string }> => {
   const response = await fetch('/api/edit-image', {
     method: 'POST',
@@ -66,6 +67,7 @@ export const editImage = async (
       browserFingerprint,
       eyeColor,
       hasEyeColorPotential,
+      personCount,
     }),
   });
 

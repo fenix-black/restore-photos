@@ -8,6 +8,35 @@ import { checkRateLimit, incrementUsage } from '@/lib/rate-limiter';
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
 
+// Helper function to add strict preservation rules for single-person photos
+function enhancePromptWithStrictPreservation(originalPrompt: string, personCount?: number): string {
+  // Only apply strict preservation for single-person photos
+  console.log(`personCount received: ${personCount}, type: ${typeof personCount}`);
+  
+  // Convert to number if it's a string and check for single person
+  const count = typeof personCount === 'string' ? parseInt(personCount as any) : personCount;
+  
+  if (!count || count !== 1) {
+    console.log(`Strict preservation NOT applied - count: ${count}, type: ${typeof count}`);
+    return originalPrompt;
+  }
+
+  console.log(`Applying strict preservation for single person (count: ${count})`);
+  
+  // Add strict preservation rules at the beginning of the prompt
+  const strictRules = `CRITICAL PRESERVATION RULES - DO NOT ALTER: 
+1. EXACT facial geometry - maintain precise eye shape, spacing, and size
+2. EXACT expression - no added smile or emotions, keep original mouth position
+3. EXACT head angle and tilt - do not straighten or adjust
+4. EXACT eyebrow shape, thickness, position, and color intensity
+5. Keep all facial asymmetries and unique features unchanged
+6. PRESERVE exact clothing patterns, stripes, and designs - do not modify
+REMOVE all sepia/vintage tones completely. Apply MODERN VIVID colors: bright whites (not cream), deep true blacks, vibrant skin tones without any yellow/brown vintage cast. Make it look like a photo taken TODAY with a modern camera - crystal clear with punchy, saturated colors. NO vintage aesthetic. `;
+
+  // Combine with original prompt
+  return strictRules + originalPrompt;
+}
+
 // Helper function to enhance restoration prompt with eye color guidance
 function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, hasEyeColorPotential?: boolean): string {
   // Only apply eye color guidance if both conditions are met:
@@ -30,8 +59,8 @@ function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, ha
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean } = await request.json();
-    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential } = body;
+    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean; personCount?: number } = await request.json();
+    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential, personCount } = body;
     
     if (!base64ImageData || !mimeType || !prompt) {
       return NextResponse.json(
@@ -87,7 +116,8 @@ export async function POST(request: NextRequest) {
         } catch (replicateError) {
           console.error('Flux Restore first pass failed, falling back to Gemini-only:', replicateError);
           // Fallback to Gemini for first pass if Flux Restore fails
-          const enhancedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential);
+          let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+          enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
           firstPassResult = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         }
         
@@ -95,7 +125,8 @@ export async function POST(request: NextRequest) {
         console.log('Crowd restoration - Pass 2 of 2 (Gemini refinement)...');
         
         // Create a refinement prompt for Gemini to perfect the Flux Restore output
-        const refinedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential); //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
+        let refinedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+        refinedPrompt = enhancePromptWithEyeColor(refinedPrompt, eyeColor, hasEyeColorPotential); //`CRITICAL: Preserve all facial features, structures, and identities exactly as they appear - do not alter or modify any faces. Enhance this restored photograph: boost color vibrancy by 20%, increase contrast, ensure all skin tones are warm and natural, sharpen details, improve lighting balance, add subtle film grain for photographic texture. Make it look like a high-quality modern photograph taken with professional equipment. Keep all faces and composition exactly as they are.`;
         
         console.log('Gemini refinement prompt:', refinedPrompt);
         
@@ -110,7 +141,9 @@ export async function POST(request: NextRequest) {
         console.log('Hybrid Flux Restore + Gemini restoration complete');
       } else {
         // Single pass for regular images
-        const enhancedPrompt = enhancePromptWithEyeColor(prompt, eyeColor, hasEyeColorPotential);
+        let enhancedPrompt = enhancePromptWithStrictPreservation(prompt, personCount);
+        enhancedPrompt = enhancePromptWithEyeColor(enhancedPrompt, eyeColor, hasEyeColorPotential);
+        console.log('Final enhanced prompt:', enhancedPrompt.substring(0, 200) + '...');
         result = await editImage(optimized.base64, optimized.mimeType, enhancedPrompt);
         console.log('Google Gemini restoration successful');
       }
