@@ -16,6 +16,13 @@ export interface ImageAnalysis {
   isVeryOld: boolean; // True if pre-1960s or very aged
   personCount: number; // Exact count: 0, 1, or 2+ (where 2+ means many)
   hasEyeColorPotential: boolean; // True if single person + B&W/sepia/lacks color
+  lightingInfo: {
+    primaryDirection: string; // e.g., "left", "right", "top", "front", "back-left"
+    quality: string; // e.g., "soft", "harsh", "diffused", "direct"
+    type: string; // e.g., "natural", "window", "studio", "flash"
+    shadowStrength: string; // e.g., "strong", "moderate", "subtle", "minimal"
+    description: string; // Natural language description of lighting
+  };
   videoPrompt: string;
   restorationPrompt: string;
   suggestedFilename: string;

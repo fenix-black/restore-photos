@@ -17,8 +17,8 @@ function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, ha
     return originalPrompt;
   }
 
-  // Add eye color guidance to the prompt
-  const eyeColorGuidance = ` Pay special attention to the eyes - ensure they have a natural ${eyeColor} color that looks realistic and beautiful.`;
+  // Add eye color guidance to the prompt while preserving lighting
+  const eyeColorGuidance = ` Pay special attention to the eyes - ensure they have a natural ${eyeColor} color that looks realistic and beautiful, with appropriate reflections matching the lighting direction.`;
   
   // Insert the eye color guidance before the final period or at the end
   if (originalPrompt.endsWith('.')) {

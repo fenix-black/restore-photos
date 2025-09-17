@@ -37,7 +37,7 @@ export const analyzeImage = async (
             mimeType,
           },
         },
-        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if this is a 'photo of a photo' (physical photograph captured within another scene like on a table, wall, or in hands) that needs extraction and perspective correction. Third, count the exact number of people visible in the photograph - be precise (0, 1, 2, 3, etc). Fourth, determine if the image has eye color enhancement potential (single person + black & white/sepia/lacks color). Fifth, create a SHORT, CONCISE restoration prompt (under 50 words) focusing PRIMARILY on: preserving and respecting facial features and structures exactly, then enhancing with vibrant colors, sharp details, good contrast. IMPORTANT: Do NOT include perspective or geometry corrections in the restoration prompt as they are handled separately. Sixth, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Seventh, generate a suggested filename in ${currentLanguage}.` },
+        { text: `Analyze this old photograph. Your response must follow the provided JSON schema. First, determine if the photo contains children. Second, determine if this is a 'photo of a photo' (physical photograph captured within another scene like on a table, wall, or in hands) that needs extraction and perspective correction. Third, count the exact number of people visible in the photograph - be precise (0, 1, 2, 3, etc). Fourth, determine if the image has eye color enhancement potential (single person + black & white/sepia/lacks color). Fifth, analyze the lighting carefully - identify the primary light direction, quality, type, and shadow patterns. Sixth, create a SHORT, CONCISE restoration prompt (under 50 words) that MUST include preserving the original lighting direction and shadow patterns, along with: preserving facial features exactly, enhancing with vibrant colors, sharp details, good contrast. IMPORTANT: Do NOT include perspective or geometry corrections in the restoration prompt as they are handled separately. Seventh, generate a detailed, cinematic video prompt in ENGLISH for the Veo model, following the guidelines in the schema. Eighth, generate a suggested filename in ${currentLanguage}.` },
       ],
     },
     config: {
@@ -74,6 +74,32 @@ export const analyzeImage = async (
             type: Type.BOOLEAN,
             description: "True if this image is suitable for eye color enhancement. This requires BOTH conditions: (1) exactly one person visible in the image, AND (2) the image is black & white, sepia, or lacks natural colors. Only return true if both conditions are met."
           },
+          lightingInfo: {
+            type: Type.OBJECT,
+            description: "Detailed analysis of the lighting in the photograph",
+            properties: {
+              primaryDirection: {
+                type: Type.STRING,
+                description: "Primary light source direction. Options: 'left', 'right', 'top', 'bottom', 'front', 'back-left', 'back-right', 'above-left', 'above-right'. Be specific based on shadows and highlights visible in the image."
+              },
+              quality: {
+                type: Type.STRING,
+                description: "Quality of the light. Options: 'soft' (diffused, gentle shadows), 'harsh' (strong contrast, hard shadows), 'diffused' (very even, minimal shadows), 'direct' (clear directional light)."
+              },
+              type: {
+                type: Type.STRING,
+                description: "Type of lighting detected. Options: 'natural' (outdoor sunlight), 'window' (indoor natural light through window), 'studio' (artificial studio lighting), 'flash' (camera flash), 'mixed' (combination of sources), 'ambient' (general indoor lighting)."
+              },
+              shadowStrength: {
+                type: Type.STRING,
+                description: "Strength of shadows in the image. Options: 'strong' (very dark, defined shadows), 'moderate' (clear but not harsh shadows), 'subtle' (soft, gentle shadows), 'minimal' (barely visible shadows)."
+              },
+              description: {
+                type: Type.STRING,
+                description: "Natural language description of the lighting setup, including any special characteristics like Rembrandt lighting, rim lighting, golden hour, etc. Be specific about what you observe. Example: 'Soft window light from the left creating gentle shadows on the right side of the face with a subtle rim light on the hair.'"
+              }
+            }
+          },
           videoPrompt: {
             type: Type.STRING,
             description: `Generate a detailed, cinematic prompt IN ENGLISH for the Veo video generation model. The prompt should describe a short, subtle animation. Follow these guidelines:
@@ -90,7 +116,7 @@ Example prompt: '${examplePrompt}'`
           },
           restorationPrompt: {
             type: Type.STRING,
-            description: "Create a concise, technical prompt to restore and colorize this photo. PRIORITY: Describe specific things to change while describing how to preserve all facial features intact, pay special attention to the eyes, shapes, structures, and identities exactly as they appear - do not alter faces nor geometry. Focus ONLY on color restoration and enhancement: vibrant natural colors, sharp details, good contrast, realistic skin tones. Keep it under 100 words. Example: 'Preserve everything as it is, all facial features intact (faces, head shape, eyes positions, etc), and structures exactly as they appear. Restore with vibrant natural colors. Sharp details, good contrast, warm realistic skin tones. Modern photo quality like a IMG_223099.TIFF picture.'"
+            description: "Create a concise, technical prompt to restore and colorize this photo. CRITICAL PRIORITIES: 1) MUST explicitly describe the lighting to preserve (use the lightingInfo you detected), 2) Preserve all facial features intact exactly as they appear, 3) Enhance with vibrant natural colors. The prompt MUST include the specific lighting direction and quality you detected. Keep it under 100 words. Example: 'Preserve the soft window light from left with gentle shadows on right side. Keep all facial features intact exactly as they appear. Maintain original lighting direction and shadow patterns. Restore with vibrant natural colors, sharp details, good contrast, realistic skin tones. Modern photo quality.'"
           },
           suggestedFilename: {
             type: Type.STRING,

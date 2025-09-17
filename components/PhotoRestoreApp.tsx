@@ -90,14 +90,21 @@ function PhotoRestoreApp() {
         hasManyPeople: analysis.hasManyPeople,
         isBlackAndWhite: analysis.isBlackAndWhite,
         isVeryOld: analysis.isVeryOld,
+        personCount: analysis.personCount,
+        hasEyeColorPotential: analysis.hasEyeColorPotential,
+        lighting: analysis.lightingInfo,
         suggestedFilename: analysis.suggestedFilename
       });
+      console.log('Lighting analysis:', analysis.lightingInfo.description);
+      console.log('Restoration prompt with lighting:', analysis.restorationPrompt);
       setImageAnalysis(analysis);
 
       let imageToRestore = { base64, mimeType };
 
       // Determine if we should use double-pass restoration (only if user enabled it)
+      console.log('Enhanced restoration checkbox state:', enhancedRestoration);
       const shouldUseDoublePass = enhancedRestoration && (analysis.hasManyPeople || analysis.isBlackAndWhite || analysis.isVeryOld);
+      console.log('Should use double-pass:', shouldUseDoublePass, '(enhanced:', enhancedRestoration, ', B&W:', analysis.isBlackAndWhite, ', old:', analysis.isVeryOld, ', many people:', analysis.hasManyPeople, ')');
       
       if (analysis.needsPerspectiveCorrection) {
         setCurrentStep('correcting');
@@ -109,7 +116,8 @@ function PhotoRestoreApp() {
           false,
           browserFingerprint || undefined,
           undefined, // no eye color for perspective correction
-          false // no eye color potential for perspective correction
+          false, // no eye color potential for perspective correction
+          analysis.personCount // pass person count for strict preservation
         );
         console.log('Photo extraction and perspective correction completed');
         imageToRestore = { base64: corrected.data, mimeType: corrected.mimeType };
@@ -136,7 +144,7 @@ function PhotoRestoreApp() {
         console.log('Enhanced restoration disabled - Using single pass only');
       }
       
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential);
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
       // Commented out containsChildren check to allow video generation for all photos
@@ -169,7 +177,7 @@ function PhotoRestoreApp() {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       setCurrentStep('idle');
     }
-  }, [currentStep, language, t]);
+  }, [currentStep, language, t, enhancedRestoration]);
 
   const handleGenerateVideo = useCallback(async () => {
     if (!imageAnalysis || !restoredImage) return;
@@ -223,7 +231,8 @@ function PhotoRestoreApp() {
         shouldUseDoublePass, 
         browserFingerprint || undefined,
         eyeColor,
-        imageAnalysis.hasEyeColorPotential
+        imageAnalysis.hasEyeColorPotential,
+        imageAnalysis.personCount
       );
 
       // Cache the result
@@ -331,21 +340,19 @@ function PhotoRestoreApp() {
       </header>
 
       <main className="container mx-auto px-4 pb-12 pt-4 flex flex-col items-center gap-8">
-        {currentStep === 'idle' && (
-          <>
-            {/* Enhanced Restoration Toggle - Always visible when idle */}
-            <div className="flex items-center gap-3">
-              <label className="flex items-center cursor-pointer group">
-                <input
-                  type="checkbox"
-                  checked={enhancedRestoration}
-                  onChange={(e) => setEnhancedRestoration(e.target.checked)}
-                  className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-2"
-                />
-                <span className="ml-2 text-gray-300 group-hover:text-white transition-colors">
-                  {t('enhancedRestoration')}
-                </span>
-              </label>
+        {/* Enhanced Restoration Toggle - Keep mounted but conditionally visible */}
+        <div className={`flex items-center gap-3 ${currentStep === 'idle' ? '' : 'hidden'}`}>
+          <label className="flex items-center cursor-pointer group">
+            <input
+              type="checkbox"
+              checked={enhancedRestoration}
+              onChange={(e) => setEnhancedRestoration(e.target.checked)}
+              className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-500 focus:ring-blue-500 focus:ring-2"
+            />
+            <span className="ml-2 text-gray-300 group-hover:text-white transition-colors">
+              {t('enhancedRestoration')}
+            </span>
+          </label>
               <div className="relative group">
                 <svg 
                   className="w-4 h-4 text-gray-500 hover:text-gray-300 cursor-help" 
@@ -364,8 +371,10 @@ function PhotoRestoreApp() {
                   {t('enhancedRestorationTooltip')}
                 </div>
               </div>
-            </div>
-            
+        </div>
+        
+        {currentStep === 'idle' && (
+          <>
             {/* Dropzone for image upload */}
             <Dropzone onImageDrop={handleImageDrop} />
           </>
