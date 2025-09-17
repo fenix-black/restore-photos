@@ -9,7 +9,7 @@ import { checkRateLimit, incrementUsage } from '@/lib/rate-limiter';
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
 
 // Modernization prompt for multi-person vintage photos
-const MODERNIZATION_PROMPT = "Make this old photograph look like a picture taken today with a modern camera. Keep faces EXACTLY intact without duplicating or altering features, and DO NOT duplicate eyes, mouths, or facial parts. Use realistic skin, hair, and eye colors, natural lighting and shadows, and fill missing areas. Enhance clothing colors and textures to look realistic and modern, but preserve their original design and do not add new accessories. The result must not look like a colorized old photo, but like a newly captured image.";
+const MODERNIZATION_PROMPT = "Make this old photograph look like a picture taken today with a modern camera. Fill the background naturally to maintain the scene’s continuity, lighting, and details. Keep all other elements unchanged. Photorealistic, high-resolution.";
 
 // Helper function to add strict preservation rules for single-person photos
 function enhancePromptWithStrictPreservation(originalPrompt: string, personCount?: number): string {
@@ -62,8 +62,8 @@ function enhancePromptWithEyeColor(originalPrompt: string, eyeColor?: string, ha
 
 export async function POST(request: NextRequest) {
   try {
-    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean; personCount?: number; isBlackAndWhite?: boolean } = await request.json();
-    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential, personCount, isBlackAndWhite } = body;
+    const body: EditImageRequest & { useDoublePass?: boolean; browserFingerprint?: string; eyeColor?: string; hasEyeColorPotential?: boolean; personCount?: number; isBlackAndWhite?: boolean; isEyeColorChangeOnly?: boolean } = await request.json();
+    const { base64ImageData, mimeType, prompt, useDoublePass, browserFingerprint, eyeColor, hasEyeColorPotential, personCount, isBlackAndWhite, isEyeColorChangeOnly } = body;
     
     console.log('=== EDIT IMAGE REQUEST RECEIVED ===');
     console.log(`useDoublePass: ${useDoublePass}, personCount: ${personCount}, isBlackAndWhite: ${isBlackAndWhite}`);
@@ -109,6 +109,34 @@ export async function POST(request: NextRequest) {
     let result;
     
     try {
+      // Special handling for eye color changes only (no restoration needed)
+      if (isEyeColorChangeOnly) {
+        console.log('Eye color change only mode - using minimal processing');
+        
+        // Call editImage with skipAdditionalPrompt=true to avoid color enhancements
+        // This ensures only the eye color changes without affecting skin quality
+        result = await editImage(
+          optimized.base64, 
+          optimized.mimeType, 
+          prompt, 
+          true  // skipAdditionalPrompt - critical for preserving quality
+        );
+        console.log('Eye color change complete');
+        
+        // Optimize the result and return immediately
+        const optimizedResult = await optimizeRestoredImage(result.data);
+        
+        // Increment usage counter
+        if (browserFingerprint) {
+          incrementUsage(browserFingerprint);
+        }
+        
+        return NextResponse.json({
+          data: optimizedResult.base64,
+          mimeType: optimizedResult.mimeType,
+        });
+      }
+      
       // Use double-pass for: many people, B&W photos, or very old photos
       if (useDoublePass && process.env.REPLICATE_API_TOKEN) {
         console.log('Using CodeFormer + Gemini double-pass restoration (enhanced mode)...');

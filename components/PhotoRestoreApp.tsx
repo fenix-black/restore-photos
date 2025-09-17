@@ -221,21 +221,22 @@ function PhotoRestoreApp() {
 
       console.log(`Applying eye color ${eyeColor} to restored image`);
       
-      // Create a simpler prompt for eye color change on already restored image
-      const eyeColorPrompt = `ONLY change the eye color to natural ${eyeColor}. Keep EVERYTHING else exactly the same - face, expression, lighting, colors, clothing. Just make the irises a natural ${eyeColor} color with appropriate reflections and depth.`;
+      // Use the improved reference-based prompt style for better results
+      const eyeColorPrompt = `Keep the person from [Image1] completely unchanged, but change only their eye color to natural ${eyeColor}. Preserve everything else exactly: face, expression, skin quality, lighting, clothing, background, and all details. The iris should have a realistic ${eyeColor} color with natural reflections and depth matching the original lighting. Keep the original elements unchanged. Photorealistic, seamless integration.`;
       
       // Use the RESTORED image (not original) for eye color modification
       // Single pass only since we're just changing eye color
       const restored = await apiClient.editImage(
         restoredImage.base64,  // Use restored image instead of original
         restoredImage.mimeType, 
-        eyeColorPrompt,  // Simple eye color prompt
+        eyeColorPrompt,  // Improved eye color prompt
         false,  // No double-pass needed for eye color change
         browserFingerprint || undefined,
         eyeColor,
         imageAnalysis.hasEyeColorPotential,
         imageAnalysis.personCount,
-        imageAnalysis.isBlackAndWhite
+        imageAnalysis.isBlackAndWhite,
+        true  // isEyeColorChangeOnly flag
       );
 
       // Cache the result using restored image as key
