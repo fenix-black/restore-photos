@@ -7,7 +7,13 @@
       "maxDuration": 60
     },
     "app/api/generate-video/route.ts": {
-      "maxDuration": 10
+      "maxDuration": 60
+    },
+    "app/api/generate-director-commentary/route.ts": {
+      "maxDuration": 60
+    },
+    "app/api/translate/route.ts": {
+      "maxDuration": 60
     }
   },
   "env": {
