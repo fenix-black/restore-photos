@@ -113,13 +113,40 @@ export const translateText = async (text: string, targetLanguage: 'es'): Promise
   return result.translatedText;
 };
 
+export const generateVeoPrompt = async (
+  videoPrompt: string,
+  imageAnalysis: any,
+  restoredImageData: { base64: string; mimeType: string }
+): Promise<string> => {
+  const response = await fetch('/api/generate-veo-prompt', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      videoPrompt,
+      imageAnalysis,
+      restoredImageData,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to generate VEO prompt');
+  }
+
+  const result = await response.json();
+  return result.veoJsonPrompt;
+};
+
 export const generateVideo = async (
   prompt: string,
   onProgress: (message: string) => void,
   imageData: ImageData,
   progressMessages: string[],
   containsChildren?: boolean,
-  imageAnalysis?: any
+  imageAnalysis?: any,
+  veoJsonPrompt?: string
 ): Promise<string> => {
   let messageIndex = 0;
   const interval = setInterval(() => {
@@ -144,6 +171,7 @@ export const generateVideo = async (
         },
         containsChildren,
         imageAnalysis,
+        veoJsonPrompt,
       }),
     });
 

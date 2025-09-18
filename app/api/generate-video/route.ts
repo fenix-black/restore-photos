@@ -27,9 +27,10 @@ export async function POST(request: NextRequest) {
       predictionId?: string; 
       operationName?: string; // For Gemini async operations
       containsChildren?: boolean; 
-      imageAnalysis?: any 
+      imageAnalysis?: any;
+      veoJsonPrompt?: string; // Pre-computed VEO prompt
     } = await request.json();
-    const { prompt, imageData, predictionId, operationName, containsChildren, imageAnalysis } = body;
+    const { prompt, imageData, predictionId, operationName, containsChildren, imageAnalysis, veoJsonPrompt } = body;
     
     // Check if this is a status check request for Replicate
     if (predictionId) {
@@ -99,7 +100,8 @@ export async function POST(request: NextRequest) {
             mimeType: imageData.mimeType
           },
           useJsonFormat,
-          imageAnalysis // Pass image analysis for better prompt conversion
+          imageAnalysis, // Pass image analysis for better prompt conversion
+          veoJsonPrompt // Use pre-computed VEO prompt if available
         );
         return NextResponse.json({ operationName });
       }
@@ -112,7 +114,8 @@ export async function POST(request: NextRequest) {
           mimeType: imageData.mimeType
         },
         useJsonFormat,
-        imageAnalysis
+        imageAnalysis,
+        veoJsonPrompt // Use pre-computed VEO prompt if available
       );
       return NextResponse.json({ videoBase64 });
     }
