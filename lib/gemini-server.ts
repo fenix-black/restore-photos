@@ -132,7 +132,27 @@ Example prompt: '${examplePrompt}'`
     if (!jsonText) {
       throw new Error("AI analysis returned empty response.");
     }
-    return JSON.parse(jsonText) as ImageAnalysis;
+    const analysis = JSON.parse(jsonText) as ImageAnalysis;
+    
+    // Pre-generate VEO3 JSON prompt to avoid timeout during video generation
+    // We generate it assuming the image WILL BE restored and colorized
+    try {
+      console.log('Pre-generating VEO3 JSON prompt during analysis...');
+      const veoJsonPrompt = await convertPromptToVeoJson(
+        analysis.videoPrompt,
+        analysis,
+        null, // No restored image yet - we're in analysis phase
+        true  // Flag to indicate we're assuming restoration
+      );
+      analysis.veoJsonPrompt = veoJsonPrompt;
+      console.log('VEO3 JSON prompt pre-generated successfully');
+    } catch (veoError) {
+      console.error('Failed to pre-generate VEO3 JSON prompt:', veoError);
+      // Don't fail the whole analysis if VEO3 prompt generation fails
+      // It will be generated later if needed
+    }
+    
+    return analysis;
   } catch (e) {
     console.error("Failed to parse analysis JSON:", response.text);
     throw new Error("AI analysis returned an invalid format. Please try another image.");
@@ -221,7 +241,8 @@ export const translateText = async (text: string, targetLanguage: 'es'): Promise
 export const convertPromptToVeoJson = async (
   textPrompt: string, 
   imageAnalysis?: any,
-  restoredImageData?: { base64: string; mimeType: string }
+  restoredImageData?: { base64: string; mimeType: string } | null,
+  assumeRestored: boolean = false
 ): Promise<string> => {
   const ai = getGeminiAI();
   const flashModel = 'gemini-2.5-flash'; // Fast model for conversion
@@ -244,22 +265,27 @@ export const convertPromptToVeoJson = async (
     parts.push({
       text: `This is the RESTORED and COLORIZED image that will be animated. Analyze the actual colors, clothing, and details visible in THIS image, not the original black and white photo.`
     });
+  } else if (assumeRestored) {
+    // When pre-generating during analysis, we assume the image WILL BE restored
+    parts.push({
+      text: `IMPORTANT: Assume this image WILL BE professionally restored and colorized before animation. Describe it as if it already has natural, vibrant colors - skin tones, clothing colors, background colors, etc. Do NOT describe it as black and white or sepia.`
+    });
   }
   
   // Add the main prompt
   parts.push({
-    text: `You are creating a video animation prompt for a restored and colorized vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements.
+    text: `You are creating a video animation prompt for a ${assumeRestored ? 'soon-to-be-restored and colorized' : 'restored and colorized'} vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements.
 
 IMPORTANT CONTEXT:
-- The image has been restored and colorized - describe the ACTUAL colors you see in the restored image
+- ${assumeRestored ? 'The image WILL BE restored and colorized - describe it with natural, realistic colors as if already restored' : 'The image has been restored and colorized - describe the ACTUAL colors you see'}
 - We want to animate this photo with realistic, subtle movements (breathing, blinking, slight head turns, gentle expressions)
 - The video should feel like the photo is coming to life, NOT static
 
 Original animation request: "${textPrompt}"
 ${lightingContext}
 
-Create a structured prompt that will animate this restored photograph with natural movement. Focus on:
-1. The ACTUAL colors visible in the restored image (skin tones, clothing colors, background)
+Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be-restored' : 'restored'} photograph with natural movement. Focus on:
+1. ${assumeRestored ? 'Natural, realistic colors that the restored image WILL have' : 'The ACTUAL colors visible in the restored image'} (skin tones, clothing colors, background)
 2. Subtle, realistic movements that bring life to the subjects
 3. Natural actions like breathing, blinking, slight smiles, or gentle gestures
 4. Ambient movement in the scene (hair in breeze, fabric movement, etc.)`
@@ -372,13 +398,23 @@ export const startGeminiVideoGeneration = async (
 ): Promise<string> => {
   const ai = getGeminiAI();
   
-  // Convert to JSON format if needed, passing the restored image for context
-  const finalPrompt = useJsonFormat ? 
-    await convertPromptToVeoJson(prompt, imageAnalysis, { 
+  let finalPrompt: string;
+  
+  // Check if we have a pre-computed VEO3 JSON prompt from the analysis phase
+  if (useJsonFormat && imageAnalysis?.veoJsonPrompt) {
+    console.log('Using pre-computed VEO3 JSON prompt from analysis phase');
+    finalPrompt = imageAnalysis.veoJsonPrompt;
+  } else if (useJsonFormat) {
+    // Fallback: Generate JSON prompt now (will be slower, might timeout)
+    console.log('WARNING: Generating VEO3 JSON prompt on-demand (not pre-computed)');
+    finalPrompt = await convertPromptToVeoJson(prompt, imageAnalysis, { 
       base64: imageData.data, 
       mimeType: imageData.mimeType 
-    }) : 
-    prompt;
+    });
+  } else {
+    finalPrompt = prompt;
+  }
+  
   console.log(`Starting Gemini video generation with ${useJsonFormat ? 'JSON' : 'text'} prompt format`);
   if (useJsonFormat) {
     console.log('VEO3 JSON prompt:', finalPrompt);
@@ -508,13 +544,22 @@ export const generateVideo = async (
   const ai = getGeminiAI();
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   
-  // Convert to JSON format if needed, passing the restored image for context
-  const finalPrompt = useJsonFormat ? 
-    await convertPromptToVeoJson(prompt, imageAnalysis, { 
+  let finalPrompt: string;
+  
+  // Check if we have a pre-computed VEO3 JSON prompt from the analysis phase
+  if (useJsonFormat && imageAnalysis?.veoJsonPrompt) {
+    console.log('Using pre-computed VEO3 JSON prompt from analysis phase');
+    finalPrompt = imageAnalysis.veoJsonPrompt;
+  } else if (useJsonFormat) {
+    // Fallback: Generate JSON prompt now (will be slower, might timeout)
+    console.log('WARNING: Generating VEO3 JSON prompt on-demand (not pre-computed)');
+    finalPrompt = await convertPromptToVeoJson(prompt, imageAnalysis, { 
       base64: imageData.data, 
       mimeType: imageData.mimeType 
-    }) : 
-    prompt;
+    });
+  } else {
+    finalPrompt = prompt;
+  }
   console.log(`Generating video with ${useJsonFormat ? 'JSON' : 'text'} prompt format`);
   if (useJsonFormat) {
     console.log('VEO3 JSON prompt:', finalPrompt);

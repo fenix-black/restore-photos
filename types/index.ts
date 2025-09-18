@@ -24,6 +24,7 @@ export interface ImageAnalysis {
     description: string; // Natural language description of lighting
   };
   videoPrompt: string;
+  veoJsonPrompt?: string; // Pre-computed VEO3 JSON prompt for Gemini
   restorationPrompt: string;
   suggestedFilename: string;
 }
