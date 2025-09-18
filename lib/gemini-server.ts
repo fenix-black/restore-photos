@@ -394,27 +394,27 @@ export const startGeminiVideoGeneration = async (
   prompt: string,
   imageData: { data: string; mimeType: string; },
   useJsonFormat: boolean = false,
-  imageAnalysis?: any
+  imageAnalysis?: any,
+  veoJsonPrompt?: string
 ): Promise<string> => {
   const ai = getGeminiAI();
   
   let finalPrompt: string;
   
-  // Check if we have a pre-computed VEO3 JSON prompt from the analysis phase
-  if (useJsonFormat && imageAnalysis?.veoJsonPrompt) {
-    console.log('Using pre-computed VEO3 JSON prompt from analysis phase');
-    finalPrompt = imageAnalysis.veoJsonPrompt;
+  // Use pre-computed VEO prompt if available
+  if (veoJsonPrompt && useJsonFormat) {
+    console.log('Using pre-computed VEO JSON prompt');
+    finalPrompt = veoJsonPrompt;
   } else if (useJsonFormat) {
-    // Fallback: Generate JSON prompt now (will be slower, might timeout)
-    console.log('WARNING: Generating VEO3 JSON prompt on-demand (not pre-computed)');
-    finalPrompt = await convertPromptToVeoJson(prompt, imageAnalysis, { 
+    // Fallback: Convert to JSON format if needed, passing the restored image for context
+    console.log('Generating VEO JSON prompt on-demand');
+    finalPrompt = await convertPromptToVeoJson(prompt, imageAnalysis, {
       base64: imageData.data, 
       mimeType: imageData.mimeType 
     });
   } else {
     finalPrompt = prompt;
   }
-  
   console.log(`Starting Gemini video generation with ${useJsonFormat ? 'JSON' : 'text'} prompt format`);
   if (useJsonFormat) {
     console.log('VEO3 JSON prompt:', finalPrompt);
@@ -539,20 +539,21 @@ export const generateVideo = async (
   prompt: string,
   imageData: { data: string; mimeType: string; },
   useJsonFormat: boolean = false,
-  imageAnalysis?: any
+  imageAnalysis?: any,
+  veoJsonPrompt?: string
 ): Promise<string> => {
   const ai = getGeminiAI();
   const apiKey = process.env.GOOGLE_GENAI_API_KEY;
   
   let finalPrompt: string;
   
-  // Check if we have a pre-computed VEO3 JSON prompt from the analysis phase
-  if (useJsonFormat && imageAnalysis?.veoJsonPrompt) {
-    console.log('Using pre-computed VEO3 JSON prompt from analysis phase');
-    finalPrompt = imageAnalysis.veoJsonPrompt;
+  // Use pre-computed VEO prompt if available
+  if (veoJsonPrompt && useJsonFormat) {
+    console.log('Using pre-computed VEO JSON prompt');
+    finalPrompt = veoJsonPrompt;
   } else if (useJsonFormat) {
-    // Fallback: Generate JSON prompt now (will be slower, might timeout)
-    console.log('WARNING: Generating VEO3 JSON prompt on-demand (not pre-computed)');
+    // Fallback: Convert to JSON format if needed, passing the restored image for context
+    console.log('Generating VEO JSON prompt on-demand');
     finalPrompt = await convertPromptToVeoJson(prompt, imageAnalysis, { 
       base64: imageData.data, 
       mimeType: imageData.mimeType 

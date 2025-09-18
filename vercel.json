@@ -9,6 +9,9 @@
     "app/api/generate-video/route.ts": {
       "maxDuration": 60
     },
+    "app/api/generate-veo-prompt/route.ts": {
+      "maxDuration": 60
+    },
     "app/api/generate-director-commentary/route.ts": {
       "maxDuration": 60
     },

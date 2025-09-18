@@ -223,13 +223,33 @@ function PhotoRestoreApp() {
       setError(null);
       setCurrentStep('generatingVideo');
       const progressMessages = JSON.parse(t('videoMessages')) as string[];
+      
+      let veoJsonPrompt: string | undefined;
+      
+      // If using Gemini (no children), generate VEO JSON prompt first
+      if (imageAnalysis.containsChildren === false) {
+        setLoadingMessage('Preparing video generation...');
+        try {
+          veoJsonPrompt = await apiClient.generateVeoPrompt(
+            imageAnalysis.videoPrompt,
+            imageAnalysis,
+            { base64: restoredImage.base64, mimeType: restoredImage.mimeType }
+          );
+          console.log('VEO JSON prompt generated successfully');
+        } catch (veoError) {
+          console.error('Failed to generate VEO prompt, continuing without it:', veoError);
+          // Continue without VEO JSON prompt - will use fallback
+        }
+      }
+      
       const url = await apiClient.generateVideo(
         imageAnalysis.videoPrompt, // Always use the original English prompt for the model
         setLoadingMessage,
         { base64: restoredImage.base64, mimeType: restoredImage.mimeType },
         progressMessages,
         imageAnalysis.containsChildren, // Pass the child detection flag
-        imageAnalysis // Pass full analysis for better prompt conversion
+        imageAnalysis, // Pass full analysis for better prompt conversion
+        veoJsonPrompt // Pass pre-computed VEO prompt if available
       );
       setVideoUrl(url);
       setCurrentStep('done');
