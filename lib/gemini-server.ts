@@ -133,25 +133,6 @@ Example prompt: '${examplePrompt}'`
       throw new Error("AI analysis returned empty response.");
     }
     const analysis = JSON.parse(jsonText) as ImageAnalysis;
-    
-    // Pre-generate VEO3 JSON prompt to avoid timeout during video generation
-    // We generate it assuming the image WILL BE restored and colorized
-    try {
-      console.log('Pre-generating VEO3 JSON prompt during analysis...');
-      const veoJsonPrompt = await convertPromptToVeoJson(
-        analysis.videoPrompt,
-        analysis,
-        null, // No restored image yet - we're in analysis phase
-        true  // Flag to indicate we're assuming restoration
-      );
-      analysis.veoJsonPrompt = veoJsonPrompt;
-      console.log('VEO3 JSON prompt pre-generated successfully');
-    } catch (veoError) {
-      console.error('Failed to pre-generate VEO3 JSON prompt:', veoError);
-      // Don't fail the whole analysis if VEO3 prompt generation fails
-      // It will be generated later if needed
-    }
-    
     return analysis;
   } catch (e) {
     console.error("Failed to parse analysis JSON:", response.text);
