@@ -14,6 +14,7 @@ import * as apiClient from '@/services/api-client';
 import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '@/lib/share-utils';
 import { getBrowserFingerprint } from '@/lib/fingerprint';
 import { eyeColorCache, EyeColor } from '@/lib/eye-color-cache';
+import { trackRestorationCompleted, trackVideoGenerated, trackError } from '@/lib/analytics';
 
 function PhotoRestoreApp() {
   const { t, language } = useLocalization();
@@ -76,6 +77,8 @@ function PhotoRestoreApp() {
 
   const handleImageDrop = useCallback(async (file: File) => {
     if (currentStep !== 'idle') return;
+    
+    const startTime = Date.now(); // Track restoration start time
 
     try {
       setError(null);
@@ -184,6 +187,12 @@ function PhotoRestoreApp() {
       const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount, analysis.isBlackAndWhite);
       setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
       
+      // Track successful restoration
+      trackRestorationCompleted(
+        enhancedRestoration ? 'enhanced' : 'standard',
+        startTime
+      );
+      
       // Commented out containsChildren check to allow video generation for all photos
       // if (analysis.containsChildren) {
       //   setCurrentStep('done');
@@ -200,6 +209,10 @@ function PhotoRestoreApp() {
 
     } catch (err: any) {
       console.error(err);
+      
+      // Track error before handling - determine stage based on what was completed
+      const stage = !imageAnalysis ? 'analysis' : 'restoration';
+      trackError(stage, err?.message || 'unknown_error');
       
       // Check if this is a rate limit error
       if (err.isRateLimit && err.rateLimitInfo) {
@@ -218,6 +231,8 @@ function PhotoRestoreApp() {
 
   const handleGenerateVideo = useCallback(async () => {
     if (!imageAnalysis || !restoredImage) return;
+
+    const videoStartTime = Date.now(); // Track video generation start time
 
     try {
       setError(null);
@@ -252,9 +267,18 @@ function PhotoRestoreApp() {
         veoJsonPrompt // Pass pre-computed VEO prompt if available
       );
       setVideoUrl(url);
+      
+      // Track successful video generation
+      const model = imageAnalysis.containsChildren ? 'replicate' : 'gemini';
+      trackVideoGenerated(model, videoStartTime);
+      
       setCurrentStep('done');
     } catch (err) {
       console.error(err);
+      
+      // Track video generation error
+      trackError('video', err instanceof Error ? err.message : 'unknown_video_error');
+      
       setError(err instanceof Error ? err.message : 'An unknown error occurred during video generation.');
       setCurrentStep('readyForVideo');
       setLoadingMessage('');
@@ -263,6 +287,8 @@ function PhotoRestoreApp() {
 
   const handleEyeColorSelect = useCallback(async (eyeColor: EyeColor) => {
     if (!originalImage || !restoredImage || !imageAnalysis || isEyeColorLoading) return;
+
+    const eyeColorStartTime = Date.now(); // Track eye color restoration start time
 
     try {
       setIsEyeColorLoading(true);
@@ -274,6 +300,9 @@ function PhotoRestoreApp() {
         console.log(`Using cached image for eye color: ${eyeColor}`);
         setRestoredImage({ base64: cached.base64, mimeType: cached.mimeType });
         setSelectedEyeColor(eyeColor);
+        
+        // Track cached eye color restoration (very fast)
+        trackRestorationCompleted('eye_color', eyeColorStartTime);
         return;
       }
 
@@ -311,9 +340,16 @@ function PhotoRestoreApp() {
       const updatedCachedColors = eyeColorCache.getCachedEyeColors(restoredImage.base64);
       setCachedEyeColors(updatedCachedColors);
       
+      // Track successful eye color restoration
+      trackRestorationCompleted('eye_color', eyeColorStartTime);
+      
       console.log(`Eye color restoration complete for: ${eyeColor}`);
     } catch (err: any) {
       console.error('Eye color restoration failed:', err);
+      
+      // Track eye color restoration error
+      trackError('restoration', err instanceof Error ? err.message : 'eye_color_error');
+      
       setError(err instanceof Error ? err.message : 'Failed to apply eye color enhancement.');
     } finally {
       setIsEyeColorLoading(false);
