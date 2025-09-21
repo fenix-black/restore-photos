@@ -45,6 +45,13 @@ export interface EditImageRequest {
   prompt: string;
 }
 
+export interface EditImageResponse {
+  data: string;              // Optimized version for display/download
+  mimeType: string;          // MIME type of optimized version
+  videoData?: string;        // High-quality version for video generation
+  videoMimeType?: string;    // MIME type of video version
+}
+
 export interface GenerateVideoRequest {
   prompt: string;
   imageData: ImageData;

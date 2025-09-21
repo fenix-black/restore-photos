@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
         );
         console.log('Eye color change complete');
         
-        // Optimize the result and return immediately
+        // Optimize the result for display/download
         const optimizedResult = await optimizeRestoredImage(result.data);
         
         // Increment usage counter
@@ -131,9 +131,12 @@ export async function POST(request: NextRequest) {
           incrementUsage(browserFingerprint);
         }
         
+        // Return both optimized and original versions
         return NextResponse.json({
           data: optimizedResult.base64,
           mimeType: optimizedResult.mimeType,
+          videoData: result.data,       // High-quality original for video
+          videoMimeType: result.mimeType // Original format (likely PNG)
         });
       }
       
@@ -231,9 +234,12 @@ export async function POST(request: NextRequest) {
         incrementUsage(browserFingerprint);
       }
       
+      // Return both optimized and original high-quality versions
       return NextResponse.json({
         data: optimizedResult.base64,
         mimeType: optimizedResult.mimeType,
+        videoData: result.data,       // High-quality original for video
+        videoMimeType: result.mimeType // Original format (likely PNG)
       });
     } catch (geminiError) {
       console.error('Google Gemini image restoration failed:', geminiError);
@@ -263,9 +269,12 @@ export async function POST(request: NextRequest) {
           incrementUsage(browserFingerprint);
         }
         
+        // Return both optimized and original versions
         return NextResponse.json({
           data: optimizedResult.base64,
           mimeType: optimizedResult.mimeType,
+          videoData: result.data,       // High-quality original for video
+          videoMimeType: result.mimeType // Original format (likely PNG)
         });
       } catch (replicateError) {
         console.error('Replicate fallback also failed:', replicateError);

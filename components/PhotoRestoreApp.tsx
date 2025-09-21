@@ -23,7 +23,7 @@ function PhotoRestoreApp() {
   const [loadingMessage, setLoadingMessage] = useState('');
 
   const [originalImage, setOriginalImage] = useState<{ file: File; base64: string; mimeType: string } | null>(null);
-  const [restoredImage, setRestoredImage] = useState<{ base64: string; mimeType: string } | null>(null);
+  const [restoredImage, setRestoredImage] = useState<{ base64: string; mimeType: string; videoBase64?: string; videoMimeType?: string } | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [displayVideoPrompt, setDisplayVideoPrompt] = useState<string>('');
@@ -185,7 +185,12 @@ function PhotoRestoreApp() {
       }
       
       const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount, analysis.isBlackAndWhite);
-      setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
+      setRestoredImage({ 
+        base64: restored.data, 
+        mimeType: restored.mimeType,
+        videoBase64: restored.videoData,
+        videoMimeType: restored.videoMimeType
+      });
       
       // Track successful restoration
       trackRestorationCompleted(
@@ -248,7 +253,7 @@ function PhotoRestoreApp() {
           veoJsonPrompt = await apiClient.generateVeoPrompt(
             imageAnalysis.videoPrompt,
             imageAnalysis,
-            { base64: restoredImage.base64, mimeType: restoredImage.mimeType }
+            { base64: restoredImage.videoBase64 || restoredImage.base64, mimeType: restoredImage.videoMimeType || restoredImage.mimeType }  // Use video quality version
           );
           console.log('VEO JSON prompt generated successfully');
         } catch (veoError) {
@@ -260,7 +265,7 @@ function PhotoRestoreApp() {
       const url = await apiClient.generateVideo(
         imageAnalysis.videoPrompt, // Always use the original English prompt for the model
         setLoadingMessage,
-        { base64: restoredImage.base64, mimeType: restoredImage.mimeType },
+        { base64: restoredImage.videoBase64 || restoredImage.base64, mimeType: restoredImage.videoMimeType || restoredImage.mimeType },  // Use video quality version if available
         progressMessages,
         imageAnalysis.containsChildren, // Pass the child detection flag
         imageAnalysis, // Pass full analysis for better prompt conversion
@@ -298,7 +303,12 @@ function PhotoRestoreApp() {
       const cached = eyeColorCache.getCachedImage(restoredImage.base64, eyeColor);
       if (cached) {
         console.log(`Using cached image for eye color: ${eyeColor}`);
-        setRestoredImage({ base64: cached.base64, mimeType: cached.mimeType });
+        setRestoredImage({ 
+          base64: cached.base64, 
+          mimeType: cached.mimeType,
+          videoBase64: restoredImage.videoBase64,  // Preserve original video data
+          videoMimeType: restoredImage.videoMimeType
+        });
         setSelectedEyeColor(eyeColor);
         
         // Track cached eye color restoration (very fast)
@@ -332,8 +342,13 @@ function PhotoRestoreApp() {
         mimeType: restored.mimeType
       });
       
-      // Update state
-      setRestoredImage({ base64: restored.data, mimeType: restored.mimeType });
+      // Update state, preserving video data from original restoration
+      setRestoredImage({ 
+        base64: restored.data, 
+        mimeType: restored.mimeType,
+        videoBase64: restored.videoData || restoredImage.videoBase64,  // Preserve original video data if not provided
+        videoMimeType: restored.videoMimeType || restoredImage.videoMimeType
+      });
       setSelectedEyeColor(eyeColor);
       
       // Update cached colors list
