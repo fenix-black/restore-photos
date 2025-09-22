@@ -154,7 +154,7 @@ export const editImage = async (
   }
   //manually set additional things to make it more realistic
   if (!skipAdditionalPrompt) {
-    prompt += ". ADD REALISTIC COLOR: Not everything should be muted - real photos have VARIATION. Apply: 1) TRUE blacks for dark suits/piano (not gray), TRUE whites for white clothing (not cream). 2) Natural skin tones with individual variation - some pink, some tan, some pale. 3) Hair in realistic shades - some darker brown, some lighter, with natural highlights. 4) Let SOME colors be vibrant where appropriate (ties, ribbons) while others stay muted. 5) The piano should be rich dark wood, the wall neutral but not brown. Think genuine 1950s Kodachrome - it had punchy reds and blues alongside muted tones. AVOID the uniform pastel 'colorized' look.";
+    prompt += ". ADD REALISTIC COLOR: Not everything should be muted - real photos have VARIATION. Apply if they exist: 1) TRUE blacks for dark suits/piano (not gray), TRUE whites for white clothing (not cream). 2) Natural skin tones with individual variation - some pink, some tan, some pale. 3) Hair in realistic shades - some darker brown, some lighter, with natural highlights. 4) Let SOME colors be vibrant where appropriate (ties, ribbons) while others stay muted. 5) If there's a piano it should be rich dark wood, the wall neutral but not brown. Think genuine 1950s Kodachrome - it had punchy reds and blues alongside muted tones. AVOID the uniform pastel 'colorized' look.";
   }
   console.log("Restoration prompt:", skipAdditionalPrompt ? "[CLEAN PROMPT - no additions]" : "[WITH ADDITIONS]", prompt);
   
@@ -255,21 +255,29 @@ export const convertPromptToVeoJson = async (
   
   // Add the main prompt
   parts.push({
-    text: `You are creating a video animation prompt for a ${assumeRestored ? 'soon-to-be-restored and colorized' : 'restored and colorized'} vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements.
+    text: `You are creating a video animation prompt for a ${assumeRestored ? 'soon-to-be-restored and colorized' : 'restored and colorized'} vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements while PRESERVING the exact identity of all people.
 
-IMPORTANT CONTEXT:
+CRITICAL IDENTITY PRESERVATION REQUIREMENTS:
+- **MAINTAIN EXACT FACIAL IDENTITY**: The faces must remain IDENTICAL to the source image - same facial structure, features, expressions
+- **PRESERVE EXACT HAIRSTYLES**: Keep the exact same hair color, style, length, and texture as shown in the image
+- **MAINTAIN EXACT CLOTHING**: Preserve all clothing details, colors, patterns, and textures exactly as they appear
+- **PHOTOREALISTIC CONSISTENCY**: The animation must maintain photorealistic quality throughout, no morphing or unrealistic changes
 - ${assumeRestored ? 'The image WILL BE restored and colorized - describe it with natural, realistic colors as if already restored' : 'The image has been restored and colorized - describe the ACTUAL colors you see'}
-- We want to animate this photo with realistic, subtle movements (breathing, blinking, slight head turns, gentle expressions)
-- The video should feel like the photo is coming to life, NOT static
+
+ANIMATION GUIDELINES:
+- We want to animate this photo with realistic, SUBTLE movements (breathing, blinking, slight head turns, gentle expressions)
+- The video should feel like the photo is coming to life while keeping everyone recognizable as the SAME PERSON
+- NO changes to facial features, body proportions, or age - only natural movement
 
 Original animation request: "${textPrompt}"
 ${lightingContext}
 
-Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be-restored' : 'restored'} photograph with natural movement. Focus on:
-1. ${assumeRestored ? 'Natural, realistic colors that the restored image WILL have' : 'The ACTUAL colors visible in the restored image'} (skin tones, clothing colors, background)
-2. Subtle, realistic movements that bring life to the subjects
-3. Natural actions like breathing, blinking, slight smiles, or gentle gestures
-4. Ambient movement in the scene (hair in breeze, fabric movement, etc.)`
+Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be-restored' : 'restored'} photograph with natural movement. CRITICAL FOCUS:
+1. **Identity Preservation**: Keep faces, features, and proportions EXACTLY as they are - no morphing or changes
+2. ${assumeRestored ? 'Natural, realistic colors that the restored image WILL have' : 'The ACTUAL colors visible in the restored image'} (skin tones, clothing colors, background)
+3. Subtle, realistic movements that bring life WITHOUT changing identities
+4. Natural actions like breathing, blinking, slight smiles - but faces must remain recognizable as the same people
+5. Ambient movement in the scene (hair in breeze, fabric movement) that doesn't alter hairstyles or clothing`
   });
 
   try {
@@ -295,8 +303,12 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
               type: Type.OBJECT,
               properties: {
                 description: { type: Type.STRING, description: 'Detailed description of subjects as they appear in the RESTORED image with actual skin tones and features' },
+                facial_identity: { type: Type.STRING, description: 'CRITICAL: Preserve exact facial features, bone structure, and proportions. No morphing or changes to face shape, eyes, nose, mouth, or any facial characteristics' },
+                hairstyle_preservation: { type: Type.STRING, description: 'Maintain EXACT hairstyle, hair color, hair texture, and hair length as shown in the source image - no modifications allowed' },
                 wardrobe: { type: Type.STRING, description: 'Actual clothing colors and details visible in the restored image (NOT "period clothing" but specific colors)' },
-                character_consistency: { type: Type.STRING, description: 'Maintain exact appearance from the restored colorized photograph' }
+                body_consistency: { type: Type.STRING, description: 'Preserve exact body proportions, posture, and physical characteristics as shown in the source' },
+                character_consistency: { type: Type.STRING, description: 'CRITICAL: Maintain exact photorealistic appearance from the restored photograph - person must be recognizable as the same individual throughout' },
+                age_preservation: { type: Type.STRING, description: 'Keep the exact same apparent age - no aging or de-aging effects' }
               }
             },
             scene: {
@@ -310,9 +322,10 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
             visual_details: {
               type: Type.OBJECT,
               properties: {
-                action: { type: Type.STRING, description: 'Natural movements to bring photo to life (breathing, blinking, subtle expressions, slight head movements)' },
+                action: { type: Type.STRING, description: 'SUBTLE natural movements that DO NOT alter identity: gentle breathing, soft blinking, micro-expressions, slight head tilts - movements should be minimal to preserve facial recognition' },
+                identity_anchoring: { type: Type.STRING, description: 'Ensure all movements maintain facial structure integrity - no warping, morphing, or distortion of features' },
                 props: { type: Type.STRING, description: 'Objects visible in the restored image with their actual colors' },
-                physics: { type: Type.STRING, description: 'Realistic, subtle movements - hair sway, fabric movement, natural breathing rhythm' }
+                physics: { type: Type.STRING, description: 'Realistic, subtle movements - gentle hair sway that maintains hairstyle, soft fabric movement that preserves clothing shape, natural breathing without chest distortion' }
               }
             },
             cinematography: {
@@ -338,6 +351,8 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
               type: Type.OBJECT,
               properties: {
                 visual_aesthetic: { type: Type.STRING, description: 'Overall visual style' },
+                photorealism: { type: Type.STRING, description: 'CRITICAL: Maintain strict photorealistic quality - no artistic interpretation, stylization, or unrealistic effects' },
+                consistency_mode: { type: Type.STRING, description: 'Maximum consistency mode: preserve source image identity, features, and appearance throughout entire video' },
                 aspect_ratio: { type: Type.STRING, description: 'Aspect ratio (default: "16:9")' },
                 quality: { type: Type.STRING, description: 'Video quality (default: "4K")' }
               }
@@ -361,9 +376,19 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
     return JSON.stringify(parsed);
   } catch (error) {
     console.error("Error converting prompt to VEO3 JSON:", error);
-    console.log("Falling back to original text prompt");
-    // Fallback to the original text prompt if AI conversion fails
-    return textPrompt;
+    console.log("Falling back to enhanced text prompt with identity preservation");
+    // Fallback to enhanced text prompt with identity preservation instructions
+    const enhancedPrompt = `CRITICAL: Maintain exact facial identity, features, and appearance from source image. ${textPrompt} 
+    
+STRICT REQUIREMENTS:
+- Preserve EXACT facial features and structure - no morphing or changes
+- Keep EXACT hairstyle, color, and texture as shown
+- Maintain EXACT clothing and appearance
+- Ensure photorealistic consistency throughout
+- Only add subtle, natural movements (breathing, blinking) that don't alter identity
+- Person must remain recognizable as the same individual`;
+    
+    return enhancedPrompt;
   }
 };
 

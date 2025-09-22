@@ -27,13 +27,15 @@ export const generateVideoWithReplicate = async (
     // Replicate accepts data URIs as input for images
     const dataUri = `data:${imageData.mimeType};base64,${imageData.data}`;
 
-    // Configure the Kling v2.1 model input
+    // Configure the Kling v2.1 model input with identity preservation
+    const enhancedPrompt = `${prompt}. CRITICAL: Maintain exact facial identity and features from source image. Preserve exact hairstyle, clothing, and appearance. Ensure photorealistic consistency with subtle, natural movements only.`;
+    
     const input = {
       mode: "standard",
-      prompt: prompt,
+      prompt: enhancedPrompt,
       duration: 5, // 5 second video
       start_image: dataUri,
-      negative_prompt: "blurry, distorted, unrealistic movement, artifacts, glitches"
+      negative_prompt: "blurry, distorted, unrealistic movement, artifacts, glitches, face morphing, identity changes, feature distortion, unrealistic transformations"
     };
 
     console.log("Starting video generation with Replicate...");
@@ -243,11 +245,13 @@ export const startVideoGeneration = async (
     // Convert base64 image to data URI for Replicate
     const dataUri = `data:${imageData.mimeType};base64,${imageData.data}`;
 
-    // Configure the model input (same as generateVideoUrlWithReplicate)
+    // Configure the model input with identity preservation
+    const enhancedPrompt = `${prompt}. CRITICAL: Maintain exact facial identity and features from source image. Preserve exact hairstyle, clothing, and appearance. Ensure photorealistic consistency with subtle, natural movements only.`;
+    
     const input = {
       fps: 24,
       image: dataUri,
-      prompt: prompt,
+      prompt: enhancedPrompt,
       duration: 5,
       resolution: "480p",
       camera_fixed: true,
