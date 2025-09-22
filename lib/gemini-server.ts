@@ -226,7 +226,7 @@ export const convertPromptToVeoJson = async (
   assumeRestored: boolean = false
 ): Promise<string> => {
   const ai = getGeminiAI();
-  const flashModel = 'gemini-2.5-flash'; // Fast model for conversion
+  const flashModel = 'gemini-2.5-pro'; // Fast model for conversion
   
   // Include lighting info if available
   const lightingContext = imageAnalysis?.lightingInfo?.description ? 
@@ -269,6 +269,13 @@ ANIMATION GUIDELINES:
 - The video should feel like the photo is coming to life while keeping everyone recognizable as the SAME PERSON
 - NO changes to facial features, body proportions, or age - only natural movement
 
+AUDIO GENERATION REQUIREMENTS:
+- **AMBIENT SOUNDS ONLY**: Generate ONLY environmental and scene-appropriate ambient sounds
+- **NO HUMAN SOUNDS**: Absolutely NO breathing, laughing, sighing, gasping, or any vocal sounds
+- **NO DIALOGUE**: No speech, whispers, or any form of conversation
+- **FOCUS ON ENVIRONMENT**: Wind, nature sounds, room tone, distant traffic, clock ticking, etc.
+- **EXCLUDE**: All human-originated sounds including footsteps on hard surfaces (unless essential to scene)
+
 Original animation request: "${textPrompt}"
 ${lightingContext}
 
@@ -277,7 +284,8 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
 2. ${assumeRestored ? 'Natural, realistic colors that the restored image WILL have' : 'The ACTUAL colors visible in the restored image'} (skin tones, clothing colors, background)
 3. Subtle, realistic movements that bring life WITHOUT changing identities
 4. Natural actions like breathing, blinking, slight smiles - but faces must remain recognizable as the same people
-5. Ambient movement in the scene (hair in breeze, fabric movement) that doesn't alter hairstyles or clothing`
+5. Ambient movement in the scene (hair in breeze, fabric movement) that doesn't alter hairstyles or clothing
+6. **Audio**: ONLY ambient environmental sounds - NO human sounds of any kind`
   });
 
   try {
@@ -339,12 +347,13 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
             audio: {
               type: Type.OBJECT,
               properties: {
-                dialogue: { type: Type.STRING, description: 'Always null - no conversations' },
-                primary_sounds: { type: Type.STRING, description: 'Subtle sounds from movements (soft breathing, fabric rustle, gentle footsteps)' },
-                ambient: { type: Type.STRING, description: 'Natural ambient sounds matching the scene' },
-                environmental_details: { type: Type.STRING, description: 'Environmental sounds that enhance the living photo effect' },
-                music: { type: Type.STRING, description: 'Always "No music" - natural sounds only' },
-                technical_effects: { type: Type.STRING, description: 'Natural, realistic audio processing' }
+                dialogue: { type: Type.STRING, description: 'Always null - absolutely no conversations, speech, or vocal sounds' },
+                primary_sounds: { type: Type.STRING, description: 'ONLY non-human environmental movement sounds (e.g., fabric rustling from wind, papers fluttering, curtains moving). NO breathing, sighing, laughing, or any human-originated sounds' },
+                ambient: { type: Type.STRING, description: 'Primary audio focus: Natural ambient environmental sounds matching the scene (wind, birds, distant traffic, room tone, clock ticking, nature sounds)' },
+                environmental_details: { type: Type.STRING, description: 'Additional environmental sounds that enhance atmosphere without human sounds (creaking wood, rustling leaves, water sounds, mechanical hums)' },
+                excluded_sounds: { type: Type.STRING, description: 'MUST EXCLUDE: All human sounds including breathing, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any sound originating from human actions' },
+                music: { type: Type.STRING, description: 'Always "No music" - ambient environmental sounds only' },
+                technical_effects: { type: Type.STRING, description: 'Natural, realistic audio processing focused on environmental ambience' }
               }
             },
             style: {
@@ -367,10 +376,14 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
       throw new Error("Failed to convert prompt to VEO3 format");
     }
     
-    // Parse and ensure dialogue is null
+    // Parse and ensure audio constraints are enforced
     const parsed = JSON.parse(jsonText);
     if (parsed.audio) {
       parsed.audio.dialogue = null;
+      // Ensure excluded_sounds is always populated to prevent human sounds
+      if (!parsed.audio.excluded_sounds) {
+        parsed.audio.excluded_sounds = "All human sounds including breathing, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any sound originating from human actions";
+      }
     }
     
     return JSON.stringify(parsed);
