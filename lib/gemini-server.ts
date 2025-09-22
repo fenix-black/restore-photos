@@ -255,7 +255,7 @@ export const convertPromptToVeoJson = async (
   
   // Add the main prompt
   parts.push({
-    text: `You are creating a video animation prompt for a ${assumeRestored ? 'soon-to-be-restored and colorized' : 'restored and colorized'} vintage photograph. The goal is to bring this still image to LIFE with natural, subtle movements while PRESERVING the exact identity of all people.
+    text: `You are creating a video animation prompt for a ${assumeRestored ? 'soon-to-be-restored and colorized' : 'restored and colorized'} vintage photograph. This is a precious memory being revived - the goal is to bring this still image to LIFE with natural, subtle movements while PRESERVING the exact identity of all people and creating a warm, nostalgic atmosphere.
 
 CRITICAL IDENTITY PRESERVATION REQUIREMENTS:
 - **MAINTAIN EXACT FACIAL IDENTITY**: The faces must remain IDENTICAL to the source image - same facial structure, features, expressions
@@ -270,11 +270,12 @@ ANIMATION GUIDELINES:
 - NO changes to facial features, body proportions, or age - only natural movement
 
 AUDIO GENERATION REQUIREMENTS:
-- **AMBIENT SOUNDS ONLY**: Generate ONLY environmental and scene-appropriate ambient sounds
-- **NO HUMAN SOUNDS**: Absolutely NO breathing, laughing, sighing, gasping, or any vocal sounds
+- **NOSTALGIC AMBIENT SOUNDS ONLY**: Generate ONLY warm, complementary environmental sounds that enhance the memory and create positive, nostalgic vibes
+- **NO HUMAN SOUNDS**: Absolutely NO breathing, panting, laughing, sighing, gasping, or any vocal/respiratory sounds
 - **NO DIALOGUE**: No speech, whispers, or any form of conversation
-- **FOCUS ON ENVIRONMENT**: Wind, nature sounds, room tone, distant traffic, clock ticking, etc.
-- **EXCLUDE**: All human-originated sounds including footsteps on hard surfaces (unless essential to scene)
+- **FOCUS ON MEMORY-ENHANCING AMBIENCE**: Gentle wind, soft nature sounds, warm room tone, distant pleasant sounds, grandfather clock ticking, gentle rain, birds chirping
+- **EXCLUDE**: All human-originated sounds (breathing, panting, footsteps, sighs) and any harsh or jarring noises that break the nostalgic mood
+- **ATMOSPHERE**: Create a warm, comforting soundscape that complements the revival of precious memories
 
 Original animation request: "${textPrompt}"
 ${lightingContext}
@@ -285,7 +286,7 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
 3. Subtle, realistic movements that bring life WITHOUT changing identities
 4. Natural actions like breathing, blinking, slight smiles - but faces must remain recognizable as the same people
 5. Ambient movement in the scene (hair in breeze, fabric movement) that doesn't alter hairstyles or clothing
-6. **Audio**: ONLY ambient environmental sounds - NO human sounds of any kind`
+6. **Audio**: ONLY warm, nostalgic ambient sounds that enhance the memory - NO human sounds (breathing, panting, sighs) of any kind`
   });
 
   try {
@@ -348,12 +349,12 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
               type: Type.OBJECT,
               properties: {
                 dialogue: { type: Type.STRING, description: 'Always null - absolutely no conversations, speech, or vocal sounds' },
-                primary_sounds: { type: Type.STRING, description: 'ONLY non-human environmental movement sounds (e.g., fabric rustling from wind, papers fluttering, curtains moving). NO breathing, sighing, laughing, or any human-originated sounds' },
-                ambient: { type: Type.STRING, description: 'Primary audio focus: Natural ambient environmental sounds matching the scene (wind, birds, distant traffic, room tone, clock ticking, nature sounds)' },
-                environmental_details: { type: Type.STRING, description: 'Additional environmental sounds that enhance atmosphere without human sounds (creaking wood, rustling leaves, water sounds, mechanical hums)' },
-                excluded_sounds: { type: Type.STRING, description: 'MUST EXCLUDE: All human sounds including breathing, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any sound originating from human actions' },
-                music: { type: Type.STRING, description: 'Always "No music" - ambient environmental sounds only' },
-                technical_effects: { type: Type.STRING, description: 'Natural, realistic audio processing focused on environmental ambience' }
+                primary_sounds: { type: Type.STRING, description: 'ONLY nostalgic, complementary environmental sounds (e.g., gentle fabric rustling from breeze, soft paper sounds, curtains swaying). NO breathing, panting, sighing, laughing, or any human-originated sounds' },
+                ambient: { type: Type.STRING, description: 'Primary audio focus: Warm, memory-enhancing ambient sounds that create positive nostalgic atmosphere (soft wind, pleasant bird songs, warm room tone, grandfather clock, gentle rain, distant church bells)' },
+                environmental_details: { type: Type.STRING, description: 'Additional comforting environmental sounds that enhance the nostalgic mood (soft wood creaking, gentle leaf rustles, peaceful water sounds, vintage mechanical sounds like film projectors or typewriters)' },
+                excluded_sounds: { type: Type.STRING, description: 'MUST EXCLUDE: All human sounds including breathing, panting, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any harsh/jarring sounds that break the nostalgic mood' },
+                music: { type: Type.STRING, description: 'Always "No music" - only warm, nostalgic ambient environmental sounds' },
+                technical_effects: { type: Type.STRING, description: 'Warm, vintage-inspired audio processing that enhances the memory revival experience' }
               }
             },
             style: {
@@ -382,7 +383,7 @@ Create a structured prompt that will animate this ${assumeRestored ? 'soon-to-be
       parsed.audio.dialogue = null;
       // Ensure excluded_sounds is always populated to prevent human sounds
       if (!parsed.audio.excluded_sounds) {
-        parsed.audio.excluded_sounds = "All human sounds including breathing, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any sound originating from human actions";
+        parsed.audio.excluded_sounds = "All human sounds including breathing, panting, laughing, sighing, gasping, footsteps, vocal expressions, whispers, or any harsh/jarring sounds that break the nostalgic mood";
       }
     }
     
