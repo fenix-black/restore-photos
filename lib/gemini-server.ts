@@ -226,7 +226,7 @@ export const convertPromptToVeoJson = async (
   assumeRestored: boolean = false
 ): Promise<string> => {
   const ai = getGeminiAI();
-  const flashModel = 'gemini-2.5-pro'; // Fast model for conversion
+  const flashModel = 'gemini-2.5-flash'; // Fast model for conversion
   
   // Include lighting info if available
   const lightingContext = imageAnalysis?.lightingInfo?.description ? 
