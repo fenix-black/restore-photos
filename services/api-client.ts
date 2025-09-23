@@ -157,30 +157,41 @@ export const generateVideo = async (
   onProgress(progressMessages[0]);
 
   try {
-    // Step 1: Start video generation
-    const startResponse = await fetch('/api/generate-video', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        prompt,
-        imageData: {
-          base64: imageData.base64,
-          mimeType: imageData.mimeType,
+    // Determine initial provider - prefer Gemini for non-child content
+    const initialProvider = containsChildren === false ? 'gemini' : 'replicate';
+    let currentProvider = initialProvider;
+    let fallbackAttempted = false;
+    
+    // Start video generation with current provider
+    const startVideo = async (provider: string) => {
+      const startResponse = await fetch('/api/generate-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
         },
-        containsChildren,
-        imageAnalysis,
-        veoJsonPrompt,
-      }),
-    });
+        body: JSON.stringify({
+          prompt,
+          imageData: {
+            base64: imageData.base64,
+            mimeType: imageData.mimeType,
+          },
+          containsChildren,
+          imageAnalysis,
+          veoJsonPrompt: provider === 'gemini' ? veoJsonPrompt : undefined,
+          forceProvider: provider, // Explicitly specify provider
+        }),
+      });
 
-    if (!startResponse.ok) {
-      const error = await startResponse.json();
-      throw new Error(error.error || 'Failed to start video generation');
-    }
+      if (!startResponse.ok) {
+        const error = await startResponse.json();
+        throw new Error(error.error || 'Failed to start video generation');
+      }
 
-    const startResult = await startResponse.json();
+      return startResponse.json();
+    };
+    
+    // Start with initial provider
+    let startResult = await startVideo(currentProvider);
     
     // Check if we got a prediction ID (Replicate) or operation name (Gemini) for async mode
     if (startResult.predictionId || startResult.operationName) {
@@ -218,12 +229,30 @@ export const generateVideo = async (
             throw new Error('Failed to download generated video');
           }
           const videoBlob = await videoResponse.blob();
+          clearInterval(interval);
           return URL.createObjectURL(videoBlob);
         }
         
-        // Check if failed
+        // Check if failed - attempt fallback if not already tried
         if (statusResult.status === 'failed' || statusResult.status === 'canceled') {
-          throw new Error('Video generation failed');
+          if (!fallbackAttempted && currentProvider === 'gemini') {
+            console.log('Gemini video generation failed, falling back to Replicate...');
+            onProgress('Trying alternative video generation method...');
+            fallbackAttempted = true;
+            currentProvider = 'replicate';
+            
+            // Start new generation with Replicate
+            startResult = await startVideo('replicate');
+            attempts = 0; // Reset attempts for fallback
+            continue;
+          }
+          
+          // Both failed or single provider failed
+          throw new Error(
+            fallbackAttempted 
+              ? 'Video generation failed with both providers' 
+              : 'Video generation failed'
+          );
         }
         
         attempts++;

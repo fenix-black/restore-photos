@@ -29,8 +29,9 @@ export async function POST(request: NextRequest) {
       containsChildren?: boolean; 
       imageAnalysis?: any;
       veoJsonPrompt?: string; // Pre-computed VEO prompt
+      forceProvider?: string; // Explicit provider selection for fallback
     } = await request.json();
-    const { prompt, imageData, predictionId, operationName, containsChildren, imageAnalysis, veoJsonPrompt } = body;
+    const { prompt, imageData, predictionId, operationName, containsChildren, imageAnalysis, veoJsonPrompt, forceProvider } = body;
     
     // Check if this is a status check request for Replicate
     if (predictionId) {
@@ -54,10 +55,16 @@ export async function POST(request: NextRequest) {
 
     let result: string;
     
-    // Override provider selection based on child detection
-    // Use Gemini VEO3 for non-child content (safer to use newer model)
-    const activeProvider = containsChildren === false ? 'gemini' : VIDEO_PROVIDER;
-    console.log(`Using video provider: ${activeProvider} (containsChildren: ${containsChildren})`);
+    // Determine provider: use explicit choice if provided (for fallback), otherwise auto-select
+    let activeProvider: string;
+    if (forceProvider) {
+      activeProvider = forceProvider;
+      console.log(`Using forced provider: ${activeProvider} (fallback scenario)`);
+    } else {
+      // Auto-select based on child detection
+      activeProvider = containsChildren === false ? 'gemini' : VIDEO_PROVIDER;
+      console.log(`Auto-selecting provider: ${activeProvider} (containsChildren: ${containsChildren})`);
+    }
     
     if (activeProvider === 'replicate') {
       // Check if async mode is enabled
