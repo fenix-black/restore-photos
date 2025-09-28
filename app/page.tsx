@@ -20,6 +20,7 @@ function HomeContent() {
     apiUrl: `${process.env.NEXT_PUBLIC_GROWTHKIT_SERVER_URL || 'https://growth.fenixblack.ai'}/api`,
     debug: process.env.NODE_ENV === 'development',
     language: currentLanguage,
+    theme: 'dark' as const,
   };
 
   const accountWidgetRef = useRef<GrowthKitAccountWidgetRef>(null);
