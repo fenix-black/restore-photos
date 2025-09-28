@@ -9,7 +9,7 @@
     "postinstall": "npm ls sharp || npm rebuild sharp"
   },
   "dependencies": {
-    "@fenixblack/growthkit": "^0.2.0",
+    "@fenixblack/growthkit": "^0.4.0",
     "@google/genai": "^1.19.0",
     "@vercel/analytics": "^1.5.0",
     "groq-sdk": "^0.32.0",

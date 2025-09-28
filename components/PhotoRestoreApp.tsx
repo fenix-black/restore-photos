@@ -73,7 +73,7 @@ function PhotoRestoreApp({ accountWidgetRef, currentLanguage, onLanguageToggle }
     }
 
     // Consume 1 credit for photo restoration
-    const success = await completeAction('restore_photo', { creditsRequired: 1, usdValue: 0.25 });
+    const success = await completeAction('restore_photo', { creditsRequired: 1, usdValue: 0.3 });
     if (!success) {
       setError(t('creditConsumptionFailed') || 'Failed to process credit payment. Please try again.');
       track('credit_consumption_failed', { action: 'photo_restoration', creditsRequired: 1 });
@@ -241,7 +241,7 @@ function PhotoRestoreApp({ accountWidgetRef, currentLanguage, onLanguageToggle }
     }
 
     // Consume 2 credits for video generation
-    const success = await completeAction('generate_video', { creditsRequired: 2, usdValue: 0.75 });
+    const success = await completeAction('generate_video', { creditsRequired: 2, usdValue: (0.03 * 5) });
     if (!success) {
       setError(t('creditConsumptionFailed') || 'Failed to process credit payment. Please try again.');
       track('credit_consumption_failed', { action: 'video_generation', creditsRequired: 2 });
