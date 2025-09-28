@@ -6,6 +6,7 @@ AI-powered photo restoration application built with Next.js, featuring secure ba
 
 - 🖼️ **Photo Restoration**: AI-powered restoration and colorization of old photographs
 - 🎬 **Video Generation**: Create subtle animations from restored photos
+- 💳 **Credit System**: Integrated GrowthKit credit management and user accounts
 - 🔒 **Secure API**: Backend API routes protect your API keys
 - 🌍 **Multilingual**: Support for English and Spanish
 - 📱 **Responsive Design**: Beautiful UI that works on all devices
@@ -124,12 +125,16 @@ The application uses Next.js API routes to securely handle AI model interactions
 ### Required
 - `GOOGLE_GENAI_API_KEY` - Your Google AI Studio API key (for image analysis and editing)
 - `REPLICATE_API_TOKEN` - Your Replicate API token (for video generation with Kling v2.1)
+- `GROWTHKIT_API_KEY` - Your GrowthKit server-side API key (for credit management)
+- `NEXT_PUBLIC_GROWTHKIT_API_KEY` - Your GrowthKit public API key (for client-side SDK)
 
 ### Optional
 - `VIDEO_PROVIDER` - Choose between 'replicate' (default) or 'gemini' for video generation
 - `RETURN_VIDEO_URL` - Set to 'true' to return video URLs instead of base64 (recommended for Vercel)
 - `USE_REPLICATE_FALLBACK` - Set to 'false' to disable Replicate fallback for image restoration (defaults to 'true')
 - `NEXT_PUBLIC_APP_URL` - Public URL of your app (defaults to http://localhost:3000)
+- `GROWTHKIT_API_URL` - GrowthKit API URL (defaults to https://growth.fenixblack.ai/api)
+- `NEXT_PUBLIC_GROWTHKIT_SERVER_URL` - GrowthKit server URL for client SDK (defaults to https://growth.fenixblack.ai)
 
 ## Deployment
 
@@ -148,11 +153,25 @@ The app can be deployed to any platform that supports Next.js:
 - Google Cloud Run
 - Docker containers
 
+## Credit System
+
+The app uses GrowthKit for credit management:
+
+### Credit Costs
+- **Photo Restoration**: 1 credit per photo restoration
+- **Video Generation**: 2 credits per video generated
+
+### User Features
+- Credit balance display in account widget
+- Earn credits through referrals and other actions
+- Account management and profile completion
+- Automatic referral tracking and rewards
+
 ## API Limits and Considerations
 
 - Maximum file size: 50MB (configurable in `next.config.mjs`)
 - Video generation timeout: 5 minutes
-- Rate limiting: Implement as needed based on your API quotas
+- Rate limiting: Implement as needed based on your API quotas and credit system
 
 ## Contributing
 

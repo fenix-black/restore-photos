@@ -54,5 +54,11 @@
   "eyeColorSelectorSelectColor": "Seleccionar color de ojos...",
   "eyeColorSelectorCached": "En caché",
   "eyeColorSelectorCollapse": "Contraer",
-  "eyeColorSelectorEnhancing": "Mejorando color de ojos..."
+  "eyeColorSelectorEnhancing": "Mejorando color de ojos...",
+  "insufficientCreditsPhoto": "No tienes suficientes créditos para la restauración de fotos. Necesitas 1 crédito. Por favor, obtén más créditos para continuar.",
+  "insufficientCreditsVideo": "No tienes suficientes créditos para la generación de video. Necesitas 2 créditos. Por favor, obtén más créditos para continuar.",
+  "creditConsumptionFailed": "Error al procesar el pago. Por favor, inténtalo de nuevo o contacta soporte si el problema persiste.",
+  "creditsRequired": "Créditos requeridos",
+  "photoRestorationCost": "1 crédito",
+  "videoGenerationCost": "2 créditos"
 }

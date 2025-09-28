@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
+import { useGrowthKit } from '@fenixblack/growthkit';
+import type { GrowthKitAccountWidgetRef } from '@fenixblack/growthkit';
 import Dropzone from './Dropzone';
 import StepIndicator from './StepIndicator';
 import ImageRestorationStage from './ImageRestorationStage';
@@ -14,8 +16,15 @@ import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '
 import { eyeColorCache, EyeColor } from '@/lib/eye-color-cache';
 import { trackRestorationCompleted, trackVideoGenerated, trackError } from '@/lib/analytics';
 
-function PhotoRestoreApp() {
+interface PhotoRestoreAppProps {
+  accountWidgetRef: React.RefObject<GrowthKitAccountWidgetRef | null>;
+  currentLanguage: 'en' | 'es';
+  onLanguageToggle: (newLanguage: 'en' | 'es') => void;
+}
+
+function PhotoRestoreApp({ accountWidgetRef, currentLanguage, onLanguageToggle }: PhotoRestoreAppProps) {
   const { t, language } = useLocalization();
+  const { credits, completeAction, track } = useGrowthKit();
   const [currentStep, setCurrentStep] = useState<AppStep>('idle');
   const [error, setError] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState('');
@@ -55,6 +64,24 @@ function PhotoRestoreApp() {
 
   const handleImageDrop = useCallback(async (file: File) => {
     if (currentStep !== 'idle') return;
+    
+    // Check if user has enough credits for photo restoration (1 credit)
+    if (credits < 1) {
+      setError(t('insufficientCreditsPhoto') || 'Not enough credits for photo restoration. Please get more credits.');
+      track('action_blocked', { action: 'photo_restoration', reason: 'insufficient_credits', creditsRequired: 1 });
+      return;
+    }
+
+    // Consume 1 credit for photo restoration
+    const success = await completeAction('restore_photo', { creditsRequired: 1, usdValue: 0.25 });
+    if (!success) {
+      setError(t('creditConsumptionFailed') || 'Failed to process credit payment. Please try again.');
+      track('credit_consumption_failed', { action: 'photo_restoration', creditsRequired: 1 });
+      return;
+    }
+
+    // Track successful credit consumption
+    track('credit_consumed', { action: 'photo_restoration', creditsUsed: 1, usdValue: 0.25 });
     
     const startTime = Date.now(); // Track restoration start time
 
@@ -201,10 +228,28 @@ function PhotoRestoreApp() {
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       setCurrentStep('idle');
     }
-  }, [currentStep, language, t, enhancedRestoration]);
+  }, [currentStep, language, t, enhancedRestoration, credits, completeAction, track]);
 
   const handleGenerateVideo = useCallback(async () => {
     if (!imageAnalysis || !restoredImage) return;
+
+    // Check if user has enough credits for video generation (2 credits)
+    if (credits < 2) {
+      setError(t('insufficientCreditsVideo') || 'Not enough credits for video generation. Please get more credits.');
+      track('action_blocked', { action: 'video_generation', reason: 'insufficient_credits', creditsRequired: 2 });
+      return;
+    }
+
+    // Consume 2 credits for video generation
+    const success = await completeAction('generate_video', { creditsRequired: 2, usdValue: 0.75 });
+    if (!success) {
+      setError(t('creditConsumptionFailed') || 'Failed to process credit payment. Please try again.');
+      track('credit_consumption_failed', { action: 'video_generation', creditsRequired: 2 });
+      return;
+    }
+
+    // Track successful credit consumption
+    track('credit_consumed', { action: 'video_generation', creditsUsed: 2, usdValue: 0.75 });
 
     const videoStartTime = Date.now(); // Track video generation start time
 
@@ -257,7 +302,7 @@ function PhotoRestoreApp() {
       setCurrentStep('readyForVideo');
       setLoadingMessage('');
     }
-  }, [imageAnalysis, restoredImage, t]);
+  }, [imageAnalysis, restoredImage, t, credits, completeAction, track]);
 
   const handleEyeColorSelect = useCallback(async (eyeColor: EyeColor) => {
     if (!originalImage || !restoredImage || !imageAnalysis || isEyeColorLoading) return;
@@ -510,15 +555,15 @@ function PhotoRestoreApp() {
   return (
     <div className="bg-brand-background min-h-screen text-brand-light font-sans">
       
-      <header className="relative p-4 sm:p-6 flex flex-col justify-center items-center text-center">
+      <header className="p-4 sm:p-6 flex flex-col justify-center items-center text-center">
         <div className="flex items-center gap-3">
           <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tighter bg-gradient-to-r from-brand-secondary to-brand-accent bg-clip-text text-transparent">
             {t('appTitle')}
           </h1>
         </div>
         <p className="mt-2 text-md text-gray-400 max-w-2xl">{t('appSubtitle')}</p>
-        <div className="absolute right-4 sm:right-6 top-1/2 -translate-y-1/2">
-            <LanguageSwitcher />
+        <div className="mt-4">
+          <LanguageSwitcher onLanguageChange={onLanguageToggle} />
         </div>
       </header>
 

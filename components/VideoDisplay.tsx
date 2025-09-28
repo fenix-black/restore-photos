@@ -27,7 +27,12 @@ const VideoDisplay: React.FC<VideoDisplayProps> = ({ description, videoUrl, isLo
       {!videoUrl && !isLoading && (
         <div className="flex flex-col items-center">
           <p className="mb-4 text-gray-300 max-w-xl">{t('videoGenerationPromptLabel')}</p>
-          <p className="mb-6 p-3 bg-brand-dark rounded-md border border-gray-700 text-gray-400 italic text-sm">"{description}"</p>
+          <p className="mb-4 p-3 bg-brand-dark rounded-md border border-gray-700 text-gray-400 italic text-sm">"{description}"</p>
+          <div className="mb-4 p-2 bg-brand-secondary/20 rounded-lg border border-brand-secondary/30">
+            <p className="text-brand-secondary text-sm font-medium">
+              💳 {t('creditsRequired')}: {t('videoGenerationCost')}
+            </p>
+          </div>
           <button
             onClick={onGenerate}
             className="flex items-center justify-center gap-2 px-6 py-3 bg-brand-secondary hover:bg-blue-500 text-white font-semibold rounded-lg shadow-md transition-transform transform hover:scale-105"

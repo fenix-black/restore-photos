@@ -77,6 +77,11 @@ const Dropzone: React.FC<DropzoneProps> = ({ onImageDrop }) => {
       <h3 className="text-xl font-semibold text-white">{t('dropzoneTitle')}</h3>
       <p className="text-gray-400 mt-2">{t('dropzoneSubtitle')}</p>
       <p className="text-xs text-gray-500 mt-4">{t('dropzoneHint')}</p>
+      <div className="mt-4 p-2 bg-brand-accent/20 rounded-lg border border-brand-accent/30">
+        <p className="text-brand-accent text-sm font-medium">
+          💳 {t('creditsRequired')}: {t('photoRestorationCost')}
+        </p>
+      </div>
     </div>
   );
 };

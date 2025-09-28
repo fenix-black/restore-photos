@@ -3,13 +3,24 @@
 import React from 'react';
 import { useLocalization } from '@/contexts/LocalizationContext';
 
-const LanguageSwitcher: React.FC = () => {
+interface LanguageSwitcherProps {
+  onLanguageChange?: (language: 'en' | 'es') => void;
+}
+
+const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onLanguageChange }) => {
   const { language, setLanguage } = useLocalization();
+
+  const handleLanguageChange = (newLanguage: 'en' | 'es') => {
+    setLanguage(newLanguage);
+    if (onLanguageChange) {
+      onLanguageChange(newLanguage);
+    }
+  };
 
   return (
     <div className="flex items-center space-x-2 p-1 bg-brand-dark/50 rounded-full">
       <button
-        onClick={() => setLanguage('en')}
+        onClick={() => handleLanguageChange('en')}
         className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${
           language === 'en'
             ? 'bg-brand-secondary text-white'
@@ -19,7 +30,7 @@ const LanguageSwitcher: React.FC = () => {
         EN
       </button>
       <button
-        onClick={() => setLanguage('es')}
+        onClick={() => handleLanguageChange('es')}
         className={`px-3 py-1 text-sm font-semibold rounded-full transition-colors ${
           language === 'es'
             ? 'bg-brand-secondary text-white'
