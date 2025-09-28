@@ -7,12 +7,10 @@ import ImageRestorationStage from './ImageRestorationStage';
 import VideoDisplay from './VideoDisplay';
 import { RestartIcon } from './icons/RestartIcon';
 import LanguageSwitcher from './LanguageSwitcher';
-import RateLimitAlert from './RateLimitAlert';
 import { useLocalization } from '@/contexts/LocalizationContext';
 import { AppStep, ImageAnalysis } from '@/types';
 import * as apiClient from '@/services/api-client';
 import { shareContent, createPhotoShareOptions, createVideoShareOptions } from '@/lib/share-utils';
-import { getBrowserFingerprint } from '@/lib/fingerprint';
 import { eyeColorCache, EyeColor } from '@/lib/eye-color-cache';
 import { trackRestorationCompleted, trackVideoGenerated, trackError } from '@/lib/analytics';
 
@@ -28,32 +26,12 @@ function PhotoRestoreApp() {
   const [imageAnalysis, setImageAnalysis] = useState<ImageAnalysis | null>(null);
   const [displayVideoPrompt, setDisplayVideoPrompt] = useState<string>('');
   const [enhancedRestoration, setEnhancedRestoration] = useState<boolean>(false); // Default to disabled for better face preservation
-  const [browserFingerprint, setBrowserFingerprint] = useState<string | null>(null);
-  const [rateLimitInfo, setRateLimitInfo] = useState<{
-    limit: number;
-    remaining: number;
-    resetTime: Date;
-    country: string;
-  } | null>(null);
   
   // Eye color selection state
   const [selectedEyeColor, setSelectedEyeColor] = useState<EyeColor | undefined>(undefined);
   const [cachedEyeColors, setCachedEyeColors] = useState<EyeColor[]>([]);
   const [isEyeColorLoading, setIsEyeColorLoading] = useState(false);
 
-  // Initialize browser fingerprint on component mount
-  useEffect(() => {
-    const initFingerprint = async () => {
-      try {
-        const fingerprint = await getBrowserFingerprint();
-        setBrowserFingerprint(fingerprint);
-      } catch (error) {
-        console.warn('Failed to generate browser fingerprint:', error);
-      }
-    };
-    
-    initFingerprint();
-  }, []);
 
   const resetState = () => {
     setCurrentStep('idle');
@@ -153,7 +131,7 @@ function PhotoRestoreApp() {
           mimeType, 
           "CRITICAL: Preserve ALL facial features, structures, and identities exactly - do not alter or distort any faces. Extract and isolate ONLY the photograph itself from the image, removing any background like tables, walls, hands, or frames. Correct the perspective to make it straight and aligned. Crop precisely to the photograph's actual edges, excluding any surrounding environment. Maintain all original photo content, colors, and especially facial integrity. Apply minimal transformation to avoid distortion.", 
           false,
-          browserFingerprint || undefined,
+          undefined,
           undefined, // no eye color for perspective correction
           false, // no eye color potential for perspective correction
           analysis.personCount, // pass person count for strict preservation
@@ -184,7 +162,7 @@ function PhotoRestoreApp() {
         console.log('Enhanced restoration disabled - Using Gemini single pass only');
       }
       
-      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, browserFingerprint || undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount, analysis.isBlackAndWhite);
+      const restored = await apiClient.editImage(imageToRestore.base64, imageToRestore.mimeType, analysis.restorationPrompt, shouldUseDoublePass, undefined, undefined, analysis.hasEyeColorPotential, analysis.personCount, analysis.isBlackAndWhite);
       setRestoredImage({ 
         base64: restored.data, 
         mimeType: restored.mimeType,
@@ -219,15 +197,6 @@ function PhotoRestoreApp() {
       const stage = !imageAnalysis ? 'analysis' : 'restoration';
       trackError(stage, err?.message || 'unknown_error');
       
-      // Check if this is a rate limit error
-      if (err.isRateLimit && err.rateLimitInfo) {
-        setRateLimitInfo({
-          ...err.rateLimitInfo,
-          resetTime: new Date(err.rateLimitInfo.resetTime)
-        });
-        setCurrentStep('idle');
-        return;
-      }
       
       setError(err instanceof Error ? err.message : 'An unknown error occurred.');
       setCurrentStep('idle');
@@ -328,7 +297,7 @@ function PhotoRestoreApp() {
         restoredImage.mimeType, 
         eyeColorPrompt,  // Improved eye color prompt
         false,  // No double-pass needed for eye color change
-        browserFingerprint || undefined,
+        undefined,
         eyeColor,
         imageAnalysis.hasEyeColorPotential,
         imageAnalysis.personCount,
@@ -369,7 +338,7 @@ function PhotoRestoreApp() {
     } finally {
       setIsEyeColorLoading(false);
     }
-  }, [originalImage, restoredImage, imageAnalysis, isEyeColorLoading, enhancedRestoration, browserFingerprint]);
+  }, [originalImage, restoredImage, imageAnalysis, isEyeColorLoading, enhancedRestoration]);
 
   const downloadImage = (base64: string, mimeType: string, filename: string) => {
     const link = document.createElement('a');
@@ -540,13 +509,6 @@ function PhotoRestoreApp() {
 
   return (
     <div className="bg-brand-background min-h-screen text-brand-light font-sans">
-      {/* Rate Limit Alert Modal */}
-      {rateLimitInfo && (
-        <RateLimitAlert 
-          rateLimitInfo={rateLimitInfo} 
-          onClose={() => setRateLimitInfo(null)} 
-        />
-      )}
       
       <header className="relative p-4 sm:p-6 flex flex-col justify-center items-center text-center">
         <div className="flex items-center gap-3">

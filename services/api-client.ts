@@ -49,7 +49,7 @@ export const editImage = async (
   mimeType: string, 
   prompt: string,
   useDoublePass?: boolean,
-  browserFingerprint?: string,
+  _unused?: string, // browserFingerprint removed but keeping parameter for backward compatibility
   eyeColor?: string,
   hasEyeColorPotential?: boolean,
   personCount?: number,
@@ -66,7 +66,6 @@ export const editImage = async (
       mimeType,
       prompt,
       useDoublePass,
-      browserFingerprint,
       eyeColor,
       hasEyeColorPotential,
       personCount,
@@ -78,13 +77,6 @@ export const editImage = async (
   if (!response.ok) {
     const error = await response.json();
     
-    // Create a custom error for rate limits
-    if (response.status === 429 && error.rateLimitInfo) {
-      const rateLimitError = new Error(error.error || 'Rate limit exceeded') as any;
-      rateLimitError.rateLimitInfo = error.rateLimitInfo;
-      rateLimitError.isRateLimit = true;
-      throw rateLimitError;
-    }
     
     throw new Error(error.error || 'Failed to edit image');
   }

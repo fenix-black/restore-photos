@@ -3,7 +3,6 @@ import { editImage, analyzeImage } from '@/lib/gemini-server';
 import { restoreImageWithReplicate } from '@/lib/replicate-server';
 import { EditImageRequest } from '@/types';
 import { optimizeImage, optimizeRestoredImage } from '@/lib/image-optimizer';
-import { checkRateLimit, incrementUsage } from '@/lib/rate-limiter';
 
 // Configuration for fallback behavior
 const USE_REPLICATE_FALLBACK = process.env.USE_REPLICATE_FALLBACK !== 'false'; // Default to true
@@ -77,22 +76,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check rate limit if fingerprint is provided
-    if (browserFingerprint) {
-      const rateLimitResult = await checkRateLimit(browserFingerprint, request);
-      
-      if (!rateLimitResult.allowed) {
-        return NextResponse.json({
-          error: 'Rate limit exceeded',
-          rateLimitInfo: {
-            limit: rateLimitResult.limit,
-            remaining: rateLimitResult.remaining,
-            resetTime: rateLimitResult.resetTime,
-            country: rateLimitResult.country
-          }
-        }, { status: 429 });
-      }
-    }
 
     // Optimize image before processing to reduce token usage
     const optimized = await optimizeImage(base64ImageData, mimeType, {
@@ -126,10 +109,6 @@ export async function POST(request: NextRequest) {
         // Optimize the result for display/download
         const optimizedResult = await optimizeRestoredImage(result.data);
         
-        // Increment usage counter
-        if (browserFingerprint) {
-          incrementUsage(browserFingerprint);
-        }
         
         // Return both optimized and original versions
         return NextResponse.json({
@@ -229,10 +208,6 @@ export async function POST(request: NextRequest) {
       // Optimize the restored image for download (convert to JPEG with compression)
       const optimizedResult = await optimizeRestoredImage(result.data);
       
-      // Increment usage counter after successful processing
-      if (browserFingerprint) {
-        incrementUsage(browserFingerprint);
-      }
       
       // Return both optimized and original high-quality versions
       return NextResponse.json({
@@ -264,10 +239,6 @@ export async function POST(request: NextRequest) {
         // Optimize the restored image for download (convert to JPEG with compression)
         const optimizedResult = await optimizeRestoredImage(result.data);
         
-        // Increment usage counter after successful fallback processing
-        if (browserFingerprint) {
-          incrementUsage(browserFingerprint);
-        }
         
         // Return both optimized and original versions
         return NextResponse.json({
