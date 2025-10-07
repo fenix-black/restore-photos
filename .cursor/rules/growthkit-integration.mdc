@@ -1,0 +1,261 @@
+---
+description: Guide for integrating GrowthKit widget, syncing language, and charging credits for actions
+---
+
+# GrowthKit Widget Integration Guide
+
+This guide explains how to integrate the GrowthKit widget from `@fenixblack/growthkit`, sync its language with the application's localization, and properly charge credits for user actions.
+
+## Installation
+
+```bash
+npm install @fenixblack/growthkit
+```
+
+## Core Components
+
+### 1. Widget Setup in Root Page
+
+The GrowthKit widget should be set up in your main page component (typically [app/page.tsx](mdc:app/page.tsx)) as a wrapper around your application:
+
+```typescript
+'use client';
+
+import { GrowthKitAccountWidget } from '@fenixblack/growthkit';
+import { useState, useRef, useEffect } from 'react';
+import type { GrowthKitAccountWidgetRef } from '@fenixblack/growthkit';
+import { useLocalization } from '@/contexts/LocalizationContext';
+
+function HomeContent() {
+  const { language } = useLocalization();
+  const [currentLanguage, setCurrentLanguage] = useState<'en' | 'es'>(language);
+  const accountWidgetRef = useRef<GrowthKitAccountWidgetRef>(null);
+  
+  // Sync with localization context changes
+  useEffect(() => {
+    setCurrentLanguage(language);
+  }, [language]);
+  
+  // Configuration for the widget
+  const config = {
+    debug: process.env.NODE_ENV === 'development',
+    language: currentLanguage,
+    theme: 'dark' as const,  // or 'light'
+  };
+  
+  // Function to handle language switching
+  const handleLanguageToggle = (newLanguage: 'en' | 'es') => {
+    setCurrentLanguage(newLanguage);
+    
+    // Update widget's language programmatically with slight delay
+    setTimeout(() => {
+      accountWidgetRef.current?.setLanguage(newLanguage);
+    }, 100);
+  };
+
+  return (
+    <GrowthKitAccountWidget 
+      config={config}
+      ref={accountWidgetRef}
+      slim={true}
+      position="top-right"
+      theme="dark"
+      onCreditsChange={(credits: number) => {
+        console.log('Credits updated:', credits);
+      }}
+      onProfileChange={(profile: { name?: string; email?: string; verified?: boolean }) => {
+        console.log('Profile updated:', profile);
+      }}
+    >
+      <YourAppComponent 
+        accountWidgetRef={accountWidgetRef}
+        currentLanguage={currentLanguage}
+        onLanguageToggle={handleLanguageToggle}
+      />
+    </GrowthKitAccountWidget>
+  );
+}
+```
+
+### 2. Language Synchronization
+
+**Key principles:**
+- Use a local state `currentLanguage` to track the widget's language
+- Sync with your localization context using `useEffect`
+- Use the widget ref's `setLanguage()` method to update the widget
+- Add a small delay (100ms) when programmatically changing language to ensure proper syncing
+
+**Pattern:**
+```typescript
+const { language } = useLocalization();
+const [currentLanguage, setCurrentLanguage] = useState<'en' | 'es'>(language);
+const accountWidgetRef = useRef<GrowthKitAccountWidgetRef>(null);
+
+// Sync with context
+useEffect(() => {
+  setCurrentLanguage(language);
+}, [language]);
+
+// Manual language change handler
+const handleLanguageToggle = (newLanguage: 'en' | 'es') => {
+  setCurrentLanguage(newLanguage);
+  setTimeout(() => {
+    accountWidgetRef.current?.setLanguage(newLanguage);
+  }, 100);
+};
+```
+
+### 3. Credit Charging System
+
+**Implementation in child components** (see [components/PhotoRestoreApp.tsx](mdc:components/PhotoRestoreApp.tsx)):
+
+```typescript
+import { useGrowthKit } from '@fenixblack/growthkit';
+
+function YourComponent() {
+  const { credits, completeAction, track } = useGrowthKit();
+  
+  const handleAction = async () => {
+    // 1. Check if user has enough credits BEFORE action
+    const requiredCredits = 1;
+    if (credits < requiredCredits) {
+      setError(t('insufficientCredits') || 'Not enough credits. Please get more credits.');
+      track('action_blocked', { 
+        action: 'your_action', 
+        reason: 'insufficient_credits', 
+        creditsRequired: requiredCredits 
+      });
+      return;
+    }
+
+    // 2. Consume credits with completeAction
+    const success = await completeAction('action_name', { 
+      creditsRequired: requiredCredits, 
+      usdValue: 0.30  // USD value of the action
+    });
+    
+    if (!success) {
+      setError(t('creditConsumptionFailed') || 'Failed to process credit payment. Please try again.');
+      track('credit_consumption_failed', { 
+        action: 'your_action', 
+        creditsRequired: requiredCredits 
+      });
+      return;
+    }
+
+    // 3. Track successful credit consumption
+    track('credit_consumed', { 
+      action: 'your_action', 
+      creditsUsed: requiredCredits, 
+      usdValue: 0.30 
+    });
+
+    // 4. Perform the actual action
+    try {
+      // Your action logic here
+      await performYourAction();
+    } catch (err) {
+      console.error('Action failed:', err);
+      // Note: Credits are already consumed at this point
+      // Consider refund logic if needed
+    }
+  };
+}
+```
+
+### 4. Credit Pricing Examples
+
+Based on the current implementation:
+- **Photo Restoration**: 1 credit = $0.25-0.30 USD
+- **Video Generation**: 2 credits = $0.15-0.75 USD (varies by complexity)
+
+**Pattern:**
+```typescript
+// Low-cost action
+await completeAction('restore_photo', { 
+  creditsRequired: 1, 
+  usdValue: 0.30 
+});
+
+// Higher-cost action
+await completeAction('generate_video', { 
+  creditsRequired: 2, 
+  usdValue: 0.75 
+});
+```
+
+### 5. Analytics Integration
+
+Use the `track()` function from `useGrowthKit()` to track important events:
+
+```typescript
+// Track when actions are blocked
+track('action_blocked', { 
+  action: 'action_name', 
+  reason: 'insufficient_credits', 
+  creditsRequired: 1 
+});
+
+// Track successful credit consumption
+track('credit_consumed', { 
+  action: 'action_name', 
+  creditsUsed: 1, 
+  usdValue: 0.30 
+});
+
+// Track failures
+track('credit_consumption_failed', { 
+  action: 'action_name', 
+  creditsRequired: 1 
+});
+```
+
+## Widget Properties Reference
+
+### GrowthKitAccountWidget Props
+
+- `config`: Configuration object with `debug`, `language`, `theme`
+- `ref`: React ref for programmatic control (language changes, etc.)
+- `slim`: Boolean for compact display mode
+- `position`: Widget position - `"top-right"`, `"top-left"`, `"bottom-right"`, `"bottom-left"`
+- `theme`: `"dark"` or `"light"`
+- `onCreditsChange`: Callback when credits change
+- `onProfileChange`: Callback when user profile changes
+
+### useGrowthKit Hook
+
+Returns:
+- `credits`: Current user credit balance (number)
+- `completeAction(actionName, options)`: Async function to consume credits
+- `track(eventName, properties)`: Function to track analytics events
+- `profile`: User profile information
+
+## Best Practices
+
+1. **Always check credits before performing expensive operations**
+2. **Use descriptive action names** for `completeAction()` (e.g., 'restore_photo', 'generate_video')
+3. **Track all credit-related events** for analytics
+4. **Provide clear error messages** when credits are insufficient
+5. **Use the widget ref** for programmatic control (language switching)
+6. **Add small delays** (100ms) when programmatically updating widget state
+7. **Pass the accountWidgetRef** to child components that need credit access
+8. **Update localization messages** for insufficient credits and errors
+
+## Localization Keys
+
+Ensure these keys exist in your [locales/en.json](mdc:locales/en.json) and [locales/es.json](mdc:locales/es.json):
+
+```json
+{
+  "insufficientCreditsPhoto": "Not enough credits for photo restoration. Please get more credits.",
+  "insufficientCreditsVideo": "Not enough credits for video generation. Please get more credits.",
+  "creditConsumptionFailed": "Failed to process credit payment. Please try again."
+}
+```
+
+## File References
+
+- Widget setup: [app/page.tsx](mdc:app/page.tsx)
+- Credit consumption: [components/PhotoRestoreApp.tsx](mdc:components/PhotoRestoreApp.tsx)
+- Localization context: [contexts/LocalizationContext.tsx](mdc:contexts/LocalizationContext.tsx)
+- Translation files: [locales/en.json](mdc:locales/en.json), [locales/es.json](mdc:locales/es.json)
