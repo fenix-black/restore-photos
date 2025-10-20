@@ -12,7 +12,8 @@ export function getGeminiAI() {
 
 const analysisModel = 'gemini-2.5-pro';
 const editModel = 'gemini-2.5-flash-image-preview';
-const videoModel = 'veo-3.0-fast-generate-001';
+//const videoModel = 'veo-3.0-fast-generate-001';
+const videoModel = 'veo-3.1-fast-generate-preview';
 
 export const analyzeImage = async (
   base64ImageData: string, 
